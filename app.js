@@ -1,6 +1,6 @@
 // Initializes the Express app, middleware, routes, and triggers MongoDB connection
 const express = require('express');
-const connectDB = require('./config/connectDB');
+const connectDB = require('./config/connect-db');
 const dotenv = require('dotenv');
 
 dotenv.config();

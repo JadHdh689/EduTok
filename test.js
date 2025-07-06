@@ -1,5 +1,5 @@
 // test-models.js
-const connectDB = require('./config/connectDB');
+const connectDB = require('./config/connect-db');
 const User = require('./models/user');
 
 (async () => {
