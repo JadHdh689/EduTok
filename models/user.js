@@ -31,5 +31,7 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.index({ name: 'text' });
+userSchema.index({ email: 1 });
+userSchema.index({ is_admin: 1 });
 
 module.exports = mongoose.model('User', userSchema);
