@@ -32,4 +32,8 @@ const quizSchema = new mongoose.Schema({
     timestamps: true
 });
 
+quizSchema.index({ video_id: 1 });
+quizSchema.index({ chapter_id: 1 });
+quizSchema.index({ course_id: 1 });
+
 module.exports = mongoose.model('Quiz', quizSchema);
