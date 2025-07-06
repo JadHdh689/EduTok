@@ -25,5 +25,7 @@ const quizAttemptSchema = new mongoose.Schema({
 
 // Enforce unique attempt per user per quiz
 quizAttemptSchema.index({ user_id: 1, quiz_id: 1 }, { unique: true });
+quizAttemptSchema.index({ user_id: 1 });
+quizAttemptSchema.index({ quiz_id: 1 });
 
 module.exports = mongoose.model('QuizAttempt', quizAttemptSchema);
