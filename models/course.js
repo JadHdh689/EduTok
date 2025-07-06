@@ -22,5 +22,6 @@ const courseSchema = new mongoose.Schema({
 });
 
 courseSchema.index({ title: 'text' });
+courseSchema.index({ creator_id: 1 });
 
 module.exports = mongoose.model('Course', courseSchema);
