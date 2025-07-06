@@ -61,6 +61,6 @@ const videoSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('Video', videoSchema);
-
 videoSchema.index({ title: 'text', category: 1 });
+
+module.exports = mongoose.model('Video', videoSchema);
