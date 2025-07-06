@@ -23,4 +23,7 @@ const commentSchema = new mongoose.Schema({
   timestamps: true
 });
 
+commentSchema.index({ user_id: 1 });
+commentSchema.index({ video_id: 1 });
+
 module.exports = mongoose.model('Comment', commentSchema);
