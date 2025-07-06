@@ -3,6 +3,11 @@
 const mongoose = require('mongoose');
 
 const quizSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        trim: true,
+        maxlength: 255
+    },
     video_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Video',
