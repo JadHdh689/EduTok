@@ -15,7 +15,9 @@ const quizAttemptSchema = new mongoose.Schema({
   },
   score: {
     type: Number,
-    required: true
+    required: true,
+    min: 0,
+    max: 100
   }
 }, {
   timestamps: true
