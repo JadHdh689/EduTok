@@ -6,14 +6,16 @@ const videoSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    maxlength: 255
   },
   description: {
     type: String
   },
   url: {
     type: String,
-    required: true
+    required: true,
+    maxlength: 255
   },
   is_deleted: {
     type: Boolean,
@@ -29,7 +31,8 @@ const videoSchema = new mongoose.Schema({
     required: true
   },
   category: {
-    type: String
+    type: String,
+    maxlength: 100
   },
   creator_id: {
     type: mongoose.Schema.Types.ObjectId,
