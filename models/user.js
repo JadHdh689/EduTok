@@ -30,4 +30,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+userSchema.index({ name: 'text' });
+
 module.exports = mongoose.model('User', userSchema);
