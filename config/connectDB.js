@@ -1,3 +1,5 @@
+// Connects to MongoDB using Mongoose and loads environment variables
+
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
