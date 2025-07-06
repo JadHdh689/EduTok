@@ -62,3 +62,5 @@ const videoSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Video', videoSchema);
+
+videoSchema.index({ title: 'text', category: 1 });

@@ -1,4 +1,4 @@
-// test-db.js – Seeds and validates all models with basic test data
+// Seeds and validates all models with basic test data
 
 const connectDB = require('./config/connect-db');
 
