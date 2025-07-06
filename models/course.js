@@ -6,7 +6,8 @@ const courseSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    maxlength: 255
   },
   description: {
     type: String
