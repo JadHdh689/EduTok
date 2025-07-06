@@ -22,4 +22,6 @@ const chapterSchema = new mongoose.Schema({
   timestamps: true
 });
 
+chapterSchema.index({ course_id: 1 });
+
 module.exports = mongoose.model('Chapter', chapterSchema);
