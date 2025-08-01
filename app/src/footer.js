@@ -1,4 +1,4 @@
-import { colors } from './constants';
+import { colors } from './theme';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';

@@ -1,6 +1,6 @@
 import { Dimensions, StyleSheet, View, Text, Image, FlatList, TouchableOpacity } from 'react-native';
 import Footer from '../footer';
-import { colors, fonts } from '../constants';
+import { colors, fonts } from '../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
