@@ -1,6 +1,6 @@
 // Seeds and validates all models with basic test data
 
-const connectDB = require('./config/connect-db');
+const connectDB = require('./api/config/connect-db');
 
 const User = require('./models/user');
 const Course = require('./models/course');
