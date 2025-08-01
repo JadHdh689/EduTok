@@ -1,6 +1,6 @@
 // Starts the Express server and listens on the specified port
-
 // Initializes the Express app, middleware, routes, and triggers MongoDB connection
+
 const express = require('express');
 const connectDB = require('./config/connect-db');
 const dotenv = require('dotenv');
