@@ -1,4 +1,4 @@
-import { colors } from '../constants';
+import { colors } from './constants';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -22,43 +22,43 @@ function Footer() {
             left: 0,
         }}>
             <View style={styles.container}>
-                <MaterialCommunityIcons 
-                    name="home-outline" 
-                    size={24} 
+                <MaterialCommunityIcons
+                    name="home-outline"
+                    size={24}
                     style={styles.icons}
                 />
-                
-                <Entypo 
-                    name="graduation-cap" 
-                    size={24} 
+
+                <Entypo
+                    name="graduation-cap"
+                    size={24}
                     style={styles.icons}
                 />
-                
+
                 {user === "creator" && (
                     <View style={styles.plusIconContainer}>
-                        <FontAwesome 
-                            name="circle" 
-                            size={42} 
-                            style={styles.circleBackground} 
-                        /> 
-                        <AntDesign 
-                            name="pluscircle" 
-                            size={30} 
+                        <FontAwesome
+                            name="circle"
+                            size={42}
+                            style={styles.circleBackground}
+                        />
+                        <AntDesign
+                            name="pluscircle"
+                            size={30}
                             style={styles.plusIcon}
-                        /> 
+                        />
                     </View>
                 )}
-                
-                <MaterialCommunityIcons 
-                    name="text-search" 
-                    size={24} 
+
+                <MaterialCommunityIcons
+                    name="text-search"
+                    size={24}
                     style={styles.icons}
                 />
-                
-                <MaterialCommunityIcons 
-                    onPress={() => navigation.navigate('profile')} 
-                    name="account-outline" 
-                    size={24} 
+
+                <MaterialCommunityIcons
+                    onPress={() => navigation.navigate('profile')}
+                    name="account-outline"
+                    size={24}
                     style={styles.icons}
                 />
             </View>
@@ -73,26 +73,26 @@ const styles = StyleSheet.create({
         alignSelf: 'stretch',
         justifyContent: 'space-evenly',
     },
-    
+
     icons: {
         paddingHorizontal: 5,
         paddingVertical: 7,
         margin: 3,
         color: colors.backGround,
     },
-    
+
     plusIconContainer: {
         position: "relative",
         alignItems: 'center',
         justifyContent: 'space-between'
     },
-    
+
     circleBackground: {
-        position: 'absolute', 
+        position: 'absolute',
         color: colors.initial,
         top: -19,
     },
-    
+
     plusIcon: {
         position: 'absolute',
         top: -14,

@@ -1,6 +1,6 @@
-import {Dimensions,StyleSheet, View, Text, Image, FlatList, TouchableOpacity} from 'react-native';
-import Footer from '../components/footer';
-import {colors, fonts} from '../constants';
+import { Dimensions, StyleSheet, View, Text, Image, FlatList, TouchableOpacity } from 'react-native';
+import Footer from '../footer';
+import { colors, fonts } from '../constants';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -8,44 +8,44 @@ import Entypo from '@expo/vector-icons/Entypo';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Fontisto from '@expo/vector-icons/Fontisto';
-import  {useState} from 'react';
+import { useState } from 'react';
 
 
 const screenWidth = Dimensions.get('window').width;
 const spacing = 8;
-const itemWidth = ((screenWidth - spacing ) / 3)-5;
+const itemWidth = ((screenWidth - spacing) / 3) - 5;
 
 //will be removed just cheking how the app will look with scrolling
 const savedVideos = [
-  { id: '1', title: 'React Native Tutorial', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '2', title: 'Expo Explained', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg'},
-  { id: '3', title: 'Fitness Routine', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '5', title: 'Cooking Pasta', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '6', title: 'Deep Focus Music', uri: 'https://img.youtube.com/vi/5qap5aO4i9A/mqdefault.jpg' },
-  { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
+    { id: '1', title: 'React Native Tutorial', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
+    { id: '2', title: 'Expo Explained', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
+    { id: '3', title: 'Fitness Routine', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
+    { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '5', title: 'Cooking Pasta', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
+    { id: '6', title: 'Deep Focus Music', uri: 'https://img.youtube.com/vi/5qap5aO4i9A/mqdefault.jpg' },
+    { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
+    { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
 ];
 const favoriteVideos = [
-  { id: '1', title: 'React Native Tutorial', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '2', title: 'Expo Explained', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg'},
-  { id: '3', title: 'Fitness Routine', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '5', title: 'Cooking Pasta', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '6', title: 'Deep Focus Music', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg'  },
-  { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '1', title: 'React Native Tutorial', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '2', title: 'Expo Explained', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '3', title: 'Fitness Routine', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '5', title: 'Cooking Pasta', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '6', title: 'Deep Focus Music', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
 ];
 
 const myVideos = [
-  { id: '1', title: 'React Native Tutorial', uri:  'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
-  { id: '2', title: 'Expo Explained', uri:  'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg'},
-  { id: '3', title: 'Fitness Routine', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
-  { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '5', title: 'Cooking Pasta', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '6', title: 'Deep Focus Music', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg'  },
-  { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '1', title: 'React Native Tutorial', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
+    { id: '2', title: 'Expo Explained', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
+    { id: '3', title: 'Fitness Routine', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
+    { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '5', title: 'Cooking Pasta', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '6', title: 'Deep Focus Music', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
+    { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
 ];
 
 
@@ -53,13 +53,13 @@ const myVideos = [
 
 function Profile() {
     // will be used properly when connected to backend 
-    const [userRole, setUserRole] = useState("creator"); 
+    const [userRole, setUserRole] = useState("creator");
     const [userName, setUserName] = useState("Jane Joe");
 
 
     const insets = useSafeAreaInsets();
     const [videos, setVideos] = useState(savedVideos); //by default the screen will show saved vids
-    
+
     // for switching icons 
     const [savedIcon, setSavedIcon] = useState('bookmark-alt');
     const [mineIcon, setMineIcon] = useState('video-camera-back');
@@ -85,7 +85,7 @@ function Profile() {
             setVideos(favoriteVideos);
         }
     };
-//for showing the vids grid form
+    //for showing the vids grid form
     const renderVideoItem = ({ item }) => (
         <TouchableOpacity style={styles.videoItem}>
             <Image source={{ uri: item.uri }} style={styles.thumbnail} />
@@ -95,17 +95,17 @@ function Profile() {
     return (
         <View style={styles.container}>
             {/* Profile header */}
-            <View style={[styles.profileHeader, {marginTop: insets.top + 3}]}>
-                {userRole === "creator" ? 
-                    <MaterialCommunityIcons name="account-tie" size={24} style={styles.creatorIcon} /> : 
+            <View style={[styles.profileHeader, { marginTop: insets.top + 3 }]}>
+                {userRole === "creator" ?
+                    <MaterialCommunityIcons name="account-tie" size={24} style={styles.creatorIcon} /> :
                     <FontAwesome5 name="book-reader" size={20} style={styles.studentIcon} />
                 }
                 <Text style={styles.headerText}>
                     {userRole === "creator" ? "Educator " : "Student "}{userName}
                 </Text>
                 <MaterialIcons name="edit-note" size={24} color="#FFFFFF" style={styles.editIcon} />
-                <Entypo name="dots-three-vertical" size={14} color="#FFFF" style={styles.menuIcon}/>
-                <View style={styles.verticalLine}/>
+                <Entypo name="dots-three-vertical" size={14} color="#FFFF" style={styles.menuIcon} />
+                <View style={styles.verticalLine} />
                 <View style={styles.profileInfoContainer}>
                     <Text style={styles.profileInfoText}>following:</Text>
                     {userRole === "creator" && <Text style={styles.profileInfoText}>followers:</Text>}
@@ -113,21 +113,21 @@ function Profile() {
                     <Text style={styles.profileInfoText}>Short bio</Text>
                 </View>
             </View>
-            
+
             {/* buttons*/}
             <View style={styles.filterButtonsContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[
                         styles.filterButton
                     ]}
                     onPress={() => handleTabChange('saved')}
                 >
-                    <Fontisto name={savedIcon} size={20} style={{color: colors.saveColor}} />
+                    <Fontisto name={savedIcon} size={20} style={{ color: colors.saveColor }} />
                     <Text style={styles.buttonText}>saved</Text>
                 </TouchableOpacity>
-                
+
                 {userRole === "creator" && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[
                             styles.filterButton
                         ]}
@@ -137,20 +137,20 @@ function Profile() {
                         <Text style={styles.buttonText}>mine</Text>
                     </TouchableOpacity>
                 )}
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                     style={[
-                        styles.filterButton             
+                        styles.filterButton
                     ]}
                     onPress={() => handleTabChange('favorite')}
                 >
-                    <AntDesign name={favoriteIcon} size={20} style={{color: colors.secondary}} />
+                    <AntDesign name={favoriteIcon} size={20} style={{ color: colors.secondary }} />
                     <Text style={styles.buttonText}>favorite</Text>
                 </TouchableOpacity>
             </View>
-            
+
             {/* grid for videos*/}
-                     <FlatList
+            <FlatList
                 data={videos}
                 renderItem={renderVideoItem}
                 keyExtractor={(item) => item.id}
@@ -159,10 +159,10 @@ function Profile() {
                 style={styles.videosContainer}
                 showsVerticalScrollIndicator={false}
             />
-          
-          
-            
-            <Footer/>
+
+
+
+            <Footer />
         </View>
     );
 }
@@ -181,17 +181,17 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     creatorIcon: {
-      color:colors.backGround,
- paddingTop:2,
-    paddingRight:0,
-    paddingLeft:3,
+        color: colors.backGround,
+        paddingTop: 2,
+        paddingRight: 0,
+        paddingLeft: 3,
 
     },
     studentIcon: {
-        color:colors.backGround,
-    paddingTop:3.5,
-   marginRight:3,
-    paddingLeft:5,
+        color: colors.backGround,
+        paddingTop: 3.5,
+        marginRight: 3,
+        paddingLeft: 5,
 
     },
     headerText: {
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
         right: 10,
         top: 11,
     },
-    editIcon:{
+    editIcon: {
         position: 'absolute',
         right: 30,
         top: 5.5,
@@ -227,14 +227,14 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         left: 5,
         justifyContent: 'space-around',
-        alignContent:'center',
+        alignContent: 'center',
     },
     profileInfoText: {
         color: colors.backGround,
         fontFamily: fonts.initial,
         fontSize: 11,
         paddingTop: 7,
-        paddingLeft:20,
+        paddingLeft: 20,
 
     },
     filterButtonsContainer: {
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         flexDirection: 'row',
         marginTop: 5,
-        marginBottom:4,
+        marginBottom: 4,
     },
     filterButton: {
         backgroundColor: colors.backGround,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
         borderRadius: 11,
         alignItems: 'center',
         minWidth: "30%",
-      
+
         flex: 1,
         maxWidth: '50%',
         flexDirection: 'row',
@@ -265,34 +265,34 @@ const styles = StyleSheet.create({
         margin: 3,
         paddingBottom: 5,
     },
-  
+
     videosContainer: {
-        marginBottom: 60, 
-        
-        
+        marginBottom: 60,
+
+
     },
     videosGrid: {
-        alignItems: 'flex-start', 
-        alignSelf:'center',
-        marginHorizontal:0,
-     
-    
+        alignItems: 'flex-start',
+        alignSelf: 'center',
+        marginHorizontal: 0,
+
+
     },
-  videoItem: {
-    width: itemWidth,
-    height: 250,
-   marginTop:0,
-margin:4,
-    marginBottom:4,
-    backgroundColor: '#ccc',
-    borderRadius: 11,
-    
-  },
-  thumbnail: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 11,
-  },
+    videoItem: {
+        width: itemWidth,
+        height: 250,
+        marginTop: 0,
+        margin: 4,
+        marginBottom: 4,
+        backgroundColor: '#ccc',
+        borderRadius: 11,
+
+    },
+    thumbnail: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 11,
+    },
 });
 
 export default Profile;
