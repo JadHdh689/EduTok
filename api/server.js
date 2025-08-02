@@ -15,6 +15,10 @@ connectDB();
 // Middleware to parse JSON
 app.use(express.json());
 
+// Mount authentication routes (signup, OTP verification, etc.)
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
 // Test route
 app.get('/', (req, res) => {
   res.send('🎓 Welcome to EduTok Backend');
