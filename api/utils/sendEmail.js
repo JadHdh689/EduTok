@@ -18,3 +18,7 @@ const sendEmail = async (to, message) => {
 };
 
 module.exports = sendEmail;
+
+// ✅  Add to .env
+// EMAIL_USER=youremail@gmail.com
+// EMAIL_PASS=your_app_password
