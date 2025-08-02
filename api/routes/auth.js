@@ -59,4 +59,47 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+const jwt = require('jsonwebtoken');
+
+// Login Route
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: 'Invalid email or password' });
+
+    if (!user.is_verified) {
+      return res.status(403).json({ error: 'Please verify your email before logging in' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) return res.status(400).json({ error: 'Invalid email or password' });
+
+    const token = jwt.sign(
+      {
+        user_id: user._id,
+        role: user.role,
+        is_admin: user.is_admin
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    res.status(200).json({
+      message: 'Login successful',
+      token,
+      user: {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        is_admin: user.is_admin
+      }
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
 module.exports = router;
