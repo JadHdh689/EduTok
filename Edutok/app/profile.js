@@ -1,7 +1,7 @@
-import {Dimensions,StyleSheet, View, Text, Image, FlatList, TouchableOpacity} from 'react-native';
+import {useWindowDimensions,StyleSheet, View, Text, Image, FlatList, TouchableOpacity} from 'react-native';
 import Footer from '../src/components/footer';
 import {colors, fonts} from '../src/constants';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Entypo from '@expo/vector-icons/Entypo';
@@ -11,9 +11,7 @@ import Fontisto from '@expo/vector-icons/Fontisto';
 import  {useState} from 'react';
 
 
-const screenWidth = Dimensions.get('window').width;
-const spacing = 8;
-const itemWidth = ((screenWidth - spacing ) / 3)-5;
+
 
 //will be removed just cheking how the app will look with scrolling
 const savedVideos = [
@@ -48,14 +46,16 @@ const myVideos = [
   { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
 ];
 
-
-
-
 function Profile() {
     // will be used properly when connected to backend 
-    const [userRole, setUserRole] = useState("creator"); 
+    const [userRole, setUserRole] = useState("creator");
     const [userName, setUserName] = useState("Jane Joe");
 
+    const { width: screenWidth } = useWindowDimensions();
+       const { height: screenHeight} = useWindowDimensions();
+    const spacing = 8; 
+    const itemWidth = ((screenWidth - spacing*4) / 3) ;
+    const itemWidth2= ((screenWidth - spacing*2) / 2) ;
 
     const insets = useSafeAreaInsets();
     const [videos, setVideos] = useState(savedVideos); //by default the screen will show saved vids
@@ -87,15 +87,16 @@ function Profile() {
     };
 //for showing the vids grid form
     const renderVideoItem = ({ item }) => (
-        <TouchableOpacity style={styles.videoItem}>
+        <TouchableOpacity style={[styles.videoItem, { width: itemWidth }, { margin: spacing / 2}]}>
             <Image source={{ uri: item.uri }} style={styles.thumbnail} />
         </TouchableOpacity>
     );
 
     return (
-        <View style={styles.container}>
+        
+        <SafeAreaView style={styles.container}>
             {/* Profile header */}
-            <View style={[styles.profileHeader, {marginTop: insets.top + 3}]}>
+            <View style={[styles.profileHeader,{height:screenHeight*0.35}]}>
                 {userRole === "creator" ? 
                     <MaterialCommunityIcons name="account-tie" size={24} style={styles.creatorIcon} /> : 
                     <FontAwesome5 name="book-reader" size={20} style={styles.studentIcon} />
@@ -118,7 +119,10 @@ function Profile() {
             <View style={styles.filterButtonsContainer}>
                 <TouchableOpacity 
                     style={[
-                        styles.filterButton
+                        styles.filterButton,
+                       (userRole === "creator") ? { width: itemWidth }  :
+                               { width: itemWidth2 }  ,
+                               { marginHorizontal: spacing / 2}
                     ]}
                     onPress={() => handleTabChange('saved')}
                 >
@@ -129,7 +133,10 @@ function Profile() {
                 {userRole === "creator" && (
                     <TouchableOpacity 
                         style={[
-                            styles.filterButton
+                            styles.filterButton,
+                             { width: itemWidth } 
+                              ,
+                               { marginHorizontal: spacing / 2}
                         ]}
                         onPress={() => handleTabChange('mine')}
                     >
@@ -140,7 +147,11 @@ function Profile() {
                 
                 <TouchableOpacity 
                     style={[
-                        styles.filterButton             
+                        styles.filterButton ,   
+                        (userRole === "creator") ? { width: itemWidth } :
+                               { width: itemWidth2 }  
+                                ,
+                               { marginHorizontal: spacing / 2}         
                     ]}
                     onPress={() => handleTabChange('favorite')}
                 >
@@ -149,21 +160,22 @@ function Profile() {
                 </TouchableOpacity>
             </View>
             
-            {/* grid for videos*/}
-                     <FlatList
-                data={videos}
-                renderItem={renderVideoItem}
-                keyExtractor={(item) => item.id}
-                numColumns={3}
-                contentContainerStyle={[styles.videosGrid, { paddingBottom: insets.bottom }]}
-                style={styles.videosContainer}
-                showsVerticalScrollIndicator={false}
-            />
-          
+                        {/* grid for videos*/}
+                       <FlatList
+                  data={videos}
+                  renderItem={renderVideoItem}
+                  keyExtractor={(item) => item.id}
+                  numColumns={3}
+                 contentContainerStyle={[styles.videosGrid, { paddingBottom: insets.bottom+10 }]}
+                 style={[{ height: screenHeight * 0.5 }, { paddingBottom: insets.bottom }]}
+                  showsVerticalScrollIndicator={false}
+                
+                 />
           
             
             <Footer/>
-        </View>
+    
+        </SafeAreaView>
     );
 }
 
@@ -176,7 +188,6 @@ const styles = StyleSheet.create({
         backgroundColor: colors.initial,
         borderBottomLeftRadius: 25,
         borderBottomRightRadius: 25,
-        height: '35%',
         flexDirection: 'row',
         position: 'relative',
     },
@@ -238,8 +249,7 @@ const styles = StyleSheet.create({
 
     },
     filterButtonsContainer: {
-        marginHorizontal: 3,
-        gap: 10,
+   
         alignSelf: 'center',
         justifyContent: 'space-between',
         flexDirection: 'row',
@@ -252,10 +262,10 @@ const styles = StyleSheet.create({
         borderColor: colors.secondary,
         borderRadius: 11,
         alignItems: 'center',
-        minWidth: "30%",
+
       
         flex: 1,
-        maxWidth: '50%',
+ 
         flexDirection: 'row',
         justifyContent: 'center',
     },
@@ -266,26 +276,19 @@ const styles = StyleSheet.create({
         paddingBottom: 5,
     },
   
-    videosContainer: {
-        marginBottom: 60, 
-        
-        
-    },
+
     videosGrid: {
         alignItems: 'flex-start', 
         alignSelf:'center',
-        marginHorizontal:0,
+        marginVertical:0,
      
     
     },
   videoItem: {
-    width: itemWidth,
     height: 250,
-   marginTop:0,
-margin:4,
-    marginBottom:4,
     backgroundColor: '#ccc',
     borderRadius: 11,
+         
     
   },
   thumbnail: {
