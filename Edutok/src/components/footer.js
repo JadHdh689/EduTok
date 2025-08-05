@@ -1,7 +1,7 @@
 import { colors } from '../constants';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 // Icons
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Entypo from '@expo/vector-icons/Entypo';
@@ -9,8 +9,8 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 function Footer() {
+     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const navigation = useNavigation();
     const user = "creator"; // Will be changed once we connect to the backend
 
     return (
@@ -20,15 +20,18 @@ function Footer() {
             bottom: 0,
             right: 0,
             left: 0,
+              zIndex: 10,
         }}>
             <View style={styles.container}>
                 <MaterialCommunityIcons 
+                  onPress={() => router.push('fyp')}
                     name="home-outline" 
                     size={24} 
                     style={styles.icons}
                 />
                 
                 <Entypo 
+                 onPress={() => router.push('fullScreen')} 
                     name="graduation-cap" 
                     size={24} 
                     style={styles.icons}
@@ -56,7 +59,7 @@ function Footer() {
                 />
                 
                 <MaterialCommunityIcons 
-                    onPress={() => navigation.navigate('profile')} 
+                    onPress={() => router.push('profile')} 
                     name="account-outline" 
                     size={24} 
                     style={styles.icons}
@@ -72,6 +75,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.initial,
         alignSelf: 'stretch',
         justifyContent: 'space-evenly',
+        
     },
     
     icons: {
