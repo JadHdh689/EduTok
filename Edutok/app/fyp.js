@@ -1,152 +1,160 @@
-import {useWindowDimensions,StyleSheet, View, Text, Image, FlatList, TouchableOpacity} from 'react-native';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import {colors, fonts} from '../src/constants';
-import Footer from '../src/components/footer';
-import {useState} from 'react';
+import { useWindowDimensions, StyleSheet, View, Text, Image, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
 
-const GeneralRetrivedVids = [
-  { id: '1', title: 'React Native Tutorial', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '2', title: 'Expo Explained', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg'},
-  { id: '3', title: 'Fitness Routine', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '5', title: 'Cooking Pasta', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '6', title: 'Deep Focus Music', uri: 'https://img.youtube.com/vi/5qap5aO4i9A/mqdefault.jpg' },
-  { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
-];
-const FollowedRetrivedVids = [
-  { id: '1', title: 'React Native Tutorial', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg', subject: 'Programming', difficulty: 'hard' },
-  { id: '2', title: 'Expo Explained', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg', subject: 'Programming', difficulty: 'easy'},
-  { id: '3', title: 'Fitness Routine', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg', subject: 'Fitness', difficulty: 'intermediate' },
-  { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg', subject: 'Nature', difficulty: 'easy' },
-  { id: '5', title: 'Cooking Pasta', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg', subject: 'Cooking', difficulty: 'hard' },
-  { id: '6', title: 'Deep Focus Music', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg', subject: 'Music', difficulty: 'easy' },
-  { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg', subject: 'Travel', difficulty: 'intermediate' },
-  { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg', subject: 'Programming', difficulty: 'easy' },
-];
+// Components
+import Footer from '../src/components/footer';
 
-function Fyp(){
-    const [fypState,setFypState]=useState("General"); //to keep track of the current state of fyp screen
+// Constants
+import { colors, fonts,shadowIntensity,getDifficultyBadgeStyle } from '../src/constants';
+
+// Icons
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+
+// Mock Data - Will be replaced with API calls
+import { GeneralRetrivedVids, FollowedRetrivedVids } from '../src/mockData';
+
+function Fyp() {
+    // State Management
+    const [fypState, setFypState] = useState("General"); // Tracks current FYP screen state
+    const [videos, setVideos] = useState(GeneralRetrivedVids); // TODO: Replace with API fetched data
+
+    // Layout Calculations
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
-    const screenHeight = height;
-    const screenWidth = width;
     const spacing = 8;
-    const itemWidth = ((screenWidth - spacing*3) / 2);
-    const [videos, setVideos] = useState(GeneralRetrivedVids); //by default the screen will show saved vids
+    const itemWidth = ((width - spacing * 3) / 2);
 
-    //for showing the vids grid form
+    // Tab Change Handler
+    const handleTabChange = () => {
+        if (fypState == "General") {
+            setFypState("Followed");
+            setVideos(FollowedRetrivedVids); // TODO: Fetch followed videos from backend
+        } else {
+            setFypState("General");
+            setVideos(GeneralRetrivedVids); // TODO: Fetch general videos from backend
+        }
+    };
+  
+
+    // Video Item Renderer
     const renderVideoItem = ({ item }) => (
-        <TouchableOpacity style={[styles.videoItem, { width: itemWidth }, { margin: spacing / 2}]}>
+        <TouchableOpacity style={[
+            styles.videoItem, 
+            { width: itemWidth }, 
+            { margin: spacing / 2 }
+        ]}>
             <Image source={{ uri: item.uri }} style={styles.thumbnail} />
+            
             {/* Difficulty/Subject Badge */}
-            <View style={{
-                position: 'absolute',
-                top: 5,
-                left: 5,
-                backgroundColor: handleColorDifficulty(item.difficulty),
-                paddingHorizontal: 6,
-                paddingVertical: 3,
-                borderRadius: 9,
-                minWidth: 40,
-                alignItems: 'center'
-            }}>
-                <Text style={{
-                    color: 'white',
-                    fontSize: 10,
-                 fontFamily: fonts.initial,
-                    textTransform: 'uppercase'
-                }}>
+            <View style={[styles.badgeBox,{backgroundColor:getDifficultyBadgeStyle(item.difficulty)}]}>
+                <Text style={[styles.badgeText,{textShadowColor:getDifficultyBadgeStyle(item.difficulty)}]}>
                     {item.subject || "N/A"}
                 </Text>
             </View>
         </TouchableOpacity>
     );
 
-     const handleTabChange=()=>{
-        if(fypState=="General"){
-            setFypState("Followed");
-            setVideos(FollowedRetrivedVids);
-        }else{
-            setFypState("General");
-            setVideos(GeneralRetrivedVids);
-        }
-     }
-     const handleColorDifficulty=(level)=>{
-         switch(level){
-             case "easy":
-                 return "#44b548ff";  // Green
-             case "intermediate":
-                 return "#ff9900ff";  // Orange
-             case "hard":
-                 return "#f44336ff";  // Red
-             default:
-                 return "#9E9E9E";  // Gray
-         }
-     }
     return (
-        <SafeAreaView style={[{flex:1},{  backgroundColor: colors.backGround}]}>
-        <View style={[styles.header,{ height:screenHeight*0.05}]}>
-          <Text style={[styles.headerStyle]}>{fypState=="General"?"General":"Followed"}</Text>
-          <MaterialCommunityIcons
-           onPress={handleTabChange}
-            name="rotate-3d-variant" size={24} color="white" style={[{alignSelf:'flex-end'},{position:'absolute'},{padding:6}]} />
-        </View>
-        
-              <FlatList
-
-                          data={videos}
-                          renderItem={renderVideoItem}
-                          keyExtractor={(item) => item.id}
-                          numColumns={2}
-                            contentContainerStyle={[styles.videosGrid, { paddingBottom: insets.bottom }]}
-                 style={[{ height: screenHeight * 0.5 }, { paddingBottom: insets.bottom+60 }]}
-                  showsVerticalScrollIndicator={false}
-                
-                         />
-                         <Footer />
-
-    </SafeAreaView>
+        <SafeAreaView style={styles.container}>
+            {/* Header Section */}
+            <View style={[styles.header,shadowIntensity.bottomShadow]}>
+                <Text style={styles.headerStyle}>
+                    {fypState == "General" ? "General" : "Followed"}
+                </Text>
+                <MaterialCommunityIcons
+                    onPress={handleTabChange}
+                    name="rotate-3d-variant"
+                    size={24}
+                    color= {colors.iconColor}
+                    style={styles.switchIcon}
+                />
+            </View>
+            
+            {/* Videos Grid Section */}
+            <FlatList
+                data={videos}
+                renderItem={renderVideoItem}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                contentContainerStyle={[
+                    styles.videosGrid,
+                    { paddingBottom: insets.bottom }
+                ]}
+                style={[
+                    styles.videosList,
+                    { paddingBottom: insets.bottom + 60 }
+                ]}
+                showsVerticalScrollIndicator={false}
+            />
+            
+            {/* Footer Component */}
+            <Footer />
+        </SafeAreaView>
     );
 }
 
+// Styles
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: colors.screenColor,
+    },
     header: {
-        backgroundColor:colors.initial,
-        flexDirection:'column',
-        width:'100%',
-        padding:3,
-
+        backgroundColor: colors.initial,
+        flexDirection: 'column',
+        width: '100%',
+        padding: 3,
+        paddingLeft:9,
+        height: '5%', // Approximately 0.05 of screen height
     },
-    headerStyle:{
+    headerText: {
         fontSize: 17,
-        color: "white",
-     
-     
-        fontFamily:fonts.initial,
-    },
-    
-    videosGrid: {
-        alignItems: 'flex-start', 
-        alignSelf:'center',
-        marginVertical:0,
-     
-    
-    },
-  videoItem: {
-    height: 250,
-    backgroundColor: '#ccc',
-    borderRadius: 11,
+        color: colors.iconColor,
+        fontFamily: fonts.initial,
          
-    
-  },
-  thumbnail: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 11,
-  },
-
+    },
+    switchIcon: {
+        alignSelf: 'flex-end',
+        position: 'absolute',
+        padding: 6,
+    },
+    videosGrid: {
+        alignItems: 'flex-start',
+        alignSelf: 'center',
+        marginVertical: 0,
+    },
+    videosList: {
+        height: '50%', // Approximately 0.5 of screen height
+    },
+    videoItem: {
+        height: 250,
+        backgroundColor: '#ccc',
+        borderRadius: 11,
+    },
+    thumbnail: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 11,
+    },
+  badgeBox:{
+        position: 'absolute',
+        top: 5,
+        left: 5,
+        paddingHorizontal: 6,
+        paddingVertical: 3,
+        borderRadius: 9,
+        minWidth: 40,
+        alignItems: 'center'
+    },
+    badgeText: {
+        color: 'white',
+        fontSize: 10,
+        fontFamily: fonts.initial,
+        textTransform: 'uppercase',
+    textShadowOffset: { width: 0.5, height: 0.5}, 
+    textShadowRadius: 0.5,
+    }
 });
 
 export default Fyp;
