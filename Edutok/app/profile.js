@@ -1,113 +1,117 @@
-import {useWindowDimensions,StyleSheet, View, Text, Image, FlatList, TouchableOpacity} from 'react-native';
-import Footer from '../src/components/footer';
-import {colors, fonts} from '../src/constants';
+import {useWindowDimensions, StyleSheet, View, Text, Image, FlatList, TouchableOpacity} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { useRouter } from 'expo-router';
+
+// Components
+import Footer from '../src/components/footer';
+
+// Constants
+import {colors, fonts,shadowIntensity} from '../src/constants';
+
+// Icons
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Entypo from '@expo/vector-icons/Entypo';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Fontisto from '@expo/vector-icons/Fontisto';
-import  {useState} from 'react';
 
-
-
-
-//will be removed just cheking how the app will look with scrolling
-const savedVideos = [
-  { id: '1', title: 'React Native Tutorial', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '2', title: 'Expo Explained', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg'},
-  { id: '3', title: 'Fitness Routine', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '5', title: 'Cooking Pasta', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '6', title: 'Deep Focus Music', uri: 'https://img.youtube.com/vi/5qap5aO4i9A/mqdefault.jpg' },
-  { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg' },
-  { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
-];
-const favoriteVideos = [
-  { id: '1', title: 'React Native Tutorial', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '2', title: 'Expo Explained', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg'},
-  { id: '3', title: 'Fitness Routine', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '5', title: 'Cooking Pasta', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '6', title: 'Deep Focus Music', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg'  },
-  { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-];
-
-const myVideos = [
-  { id: '1', title: 'React Native Tutorial', uri:  'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
-  { id: '2', title: 'Expo Explained', uri:  'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg'},
-  { id: '3', title: 'Fitness Routine', uri: 'https://img.youtube.com/vi/jfKfPfyJRdk/mqdefault.jpg' },
-  { id: '4', title: 'Nature Walk', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '5', title: 'Cooking Pasta', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '6', title: 'Deep Focus Music', uri:  'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-  { id: '7', title: 'Backpacking Nepal', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg'  },
-  { id: '8', title: 'Calm Coding Stream', uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg' },
-];
+// Mock Data - Will be replaced with API calls
+import { user, myVideos, savedVideos, favoriteVideos } from '../src/mockData';
 
 function Profile() {
-    // will be used properly when connected to backend 
-    const [userRole, setUserRole] = useState("creator");
-    const [userName, setUserName] = useState("Jane Joe");
+    // State Management
+    // TODO: Replace with actual user data from backend
+    const [userRole, setUserRole] = useState(user); // Will be fetched from backend
+    const [userName, setUserName] = useState("Jane Joe"); // Will be fetched from backend
 
-    const { width: screenWidth } = useWindowDimensions();
-       const { height: screenHeight} = useWindowDimensions();
+    // Layout Calculations
+    const { height, width } = useWindowDimensions();
     const spacing = 8; 
-    const itemWidth = ((screenWidth - spacing*4) / 3) ;
-    const itemWidth2= ((screenWidth - spacing*2) / 2) ;
-
+    const itemWidthCreator = ((width - spacing * 4) / 3);
+    const itemWidthLearner = ((width - spacing * 2) / 2);
     const insets = useSafeAreaInsets();
-    const [videos, setVideos] = useState(savedVideos); //by default the screen will show saved vids
-    
-    // for switching icons 
+
+    // Video Data State
+    // TODO: Replace with API fetched data
+    const [videos, setVideos] = useState(savedVideos); // Will be fetched from backend
+
+    //for navigation
+     const router = useRouter();
+
+    // Icon States
     const [savedIcon, setSavedIcon] = useState('bookmark-alt');
     const [mineIcon, setMineIcon] = useState('video-camera-back');
     const [favoriteIcon, setFavoriteIcon] = useState('hearto');
 
-
-    //for icon switching 
+    // Tab Change Handler
     const handleTabChange = (tab) => {
         if (tab === 'saved') {
             setSavedIcon('bookmark-alt');
             setFavoriteIcon('hearto');
             setMineIcon('video-camera-back');
-            setVideos(savedVideos);
+            setVideos(savedVideos); // TODO: Fetch saved videos from backend
         } else if (tab === 'mine') {
             setSavedIcon('bookmark');
             setFavoriteIcon('hearto');
             setMineIcon('video-camera-front');
-            setVideos(myVideos);
+            setVideos(myVideos); // TODO: Fetch user's videos from backend
         } else if (tab === 'favorite') {
             setSavedIcon('bookmark');
             setFavoriteIcon('heart');
             setMineIcon('video-camera-back');
-            setVideos(favoriteVideos);
+            setVideos(favoriteVideos); // TODO: Fetch favorite videos from backend
         }
     };
-//for showing the vids grid form
+
+    // Video Item Renderer
     const renderVideoItem = ({ item }) => (
-        <TouchableOpacity style={[styles.videoItem, { width: itemWidth }, { margin: spacing / 2}]}>
+        <TouchableOpacity 
+            style={[
+                styles.videoItem, 
+                { width: itemWidthCreator }, 
+                { margin: spacing / 2 }
+            ]}
+        >
             <Image source={{ uri: item.uri }} style={styles.thumbnail} />
         </TouchableOpacity>
     );
 
     return (
-        
         <SafeAreaView style={styles.container}>
-            {/* Profile header */}
-            <View style={[styles.profileHeader,{height:screenHeight*0.35}]}>
-                {userRole === "creator" ? 
-                    <MaterialCommunityIcons name="account-tie" size={24} style={styles.creatorIcon} /> : 
-                    <FontAwesome5 name="book-reader" size={20} style={styles.studentIcon} />
-                }
-                <Text style={styles.headerText}>
-                    {userRole === "creator" ? "Educator " : "Student "}{userName}
-                </Text>
-                <MaterialIcons name="edit-note" size={24} color="#FFFFFF" style={styles.editIcon} />
-                <Entypo name="dots-three-vertical" size={14} color="#FFFF" style={styles.menuIcon}/>
+            {/* Profile Header Section */}
+            <View style={[styles.profileHeader,shadowIntensity.bottomShadow, {height: height * 0.3}]}>
+                <View style={{
+                    width: width,
+                    height: height * 0.05,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                }}>  
+                    {userRole === "creator" ? 
+                        <MaterialCommunityIcons 
+                            name="account-tie" 
+                            size={24} 
+                            style={styles.creatorIcon} 
+                        /> : 
+                        <FontAwesome5 
+                            name="book-reader" 
+                            size={20} 
+                            style={styles.studentIcon} 
+                        />
+                    }
+                    <Text style={styles.headerText}>
+                        {userRole === "creator" ? "Educator " : "Student "}{userName}
+                    </Text>
+                    <MaterialIcons name="edit-note" size={24} style={styles.editIcon} onPress={() => router.push('/editProfile')}/>
+                          {/* TODO: Add menue profile functionality */}
+                    <Entypo name="dots-three-vertical" size={14} style={styles.menuIcon}/>
+                </View>
+                
                 <View style={styles.verticalLine}/>
+                
                 <View style={styles.profileInfoContainer}>
+                    {/* TODO: Fetch these values from backend */}
                     <Text style={styles.profileInfoText}>following:</Text>
                     {userRole === "creator" && <Text style={styles.profileInfoText}>followers:</Text>}
                     <Text style={styles.profileInfoText}>Current interests:</Text>
@@ -115,14 +119,14 @@ function Profile() {
                 </View>
             </View>
             
-            {/* buttons*/}
+            {/* Filter Buttons Section */}
             <View style={styles.filterButtonsContainer}>
                 <TouchableOpacity 
                     style={[
                         styles.filterButton,
-                       (userRole === "creator") ? { width: itemWidth }  :
-                               { width: itemWidth2 }  ,
-                               { marginHorizontal: spacing / 2}
+                        shadowIntensity.bottomShadow,
+                        (userRole === "creator") ? { width: itemWidthCreator } : { width: itemWidthLearner },
+                        { marginHorizontal: spacing / 2 }
                     ]}
                     onPress={() => handleTabChange('saved')}
                 >
@@ -134,9 +138,9 @@ function Profile() {
                     <TouchableOpacity 
                         style={[
                             styles.filterButton,
-                             { width: itemWidth } 
-                              ,
-                               { marginHorizontal: spacing / 2}
+                              shadowIntensity.bottomShadow,
+                            { width: itemWidthCreator },
+                            { marginHorizontal: spacing / 2 }
                         ]}
                         onPress={() => handleTabChange('mine')}
                     >
@@ -147,155 +151,148 @@ function Profile() {
                 
                 <TouchableOpacity 
                     style={[
-                        styles.filterButton ,   
-                        (userRole === "creator") ? { width: itemWidth } :
-                               { width: itemWidth2 }  
-                                ,
-                               { marginHorizontal: spacing / 2}         
+                        styles.filterButton,  
+                       shadowIntensity.bottomShadow, 
+                        (userRole === "creator") ? { width: itemWidthCreator } : { width: itemWidthLearner },
+                        { marginHorizontal: spacing / 2 }         
                     ]}
                     onPress={() => handleTabChange('favorite')}
                 >
-                    <AntDesign name={favoriteIcon} size={20} style={{color: colors.secondary}} />
+                    <AntDesign name={favoriteIcon} size={20} style={{color: colors.favColor}} />
                     <Text style={styles.buttonText}>favorite</Text>
                 </TouchableOpacity>
             </View>
             
-                        {/* grid for videos*/}
-                       <FlatList
-                  data={videos}
-                  renderItem={renderVideoItem}
-                  keyExtractor={(item) => item.id}
-                  numColumns={3}
-                 contentContainerStyle={[styles.videosGrid, { paddingBottom: insets.bottom+10 }]}
-                 style={[{ height: screenHeight * 0.5 }, { paddingBottom: insets.bottom }]}
-                  showsVerticalScrollIndicator={false}
-                
-                 />
-          
+            {/* Videos Grid Section */}
+            <FlatList
+                data={videos}
+                renderItem={renderVideoItem}
+                keyExtractor={(item) => item.id}
+                numColumns={3}
+                contentContainerStyle={[
+                    styles.videosGrid, 
+                    { paddingBottom: insets.bottom + 10 }
+                ]}
+                style={[
+                    { height: height * 0.5 }, 
+                    { paddingBottom: insets.bottom }
+                ]}
+                showsVerticalScrollIndicator={false}
+            />
             
+            {/* Footer Component */}
             <Footer/>
-    
         </SafeAreaView>
     );
 }
 
+// Styles
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.backGround,
+        backgroundColor: colors.screenColor,
     },
     profileHeader: {
         backgroundColor: colors.initial,
         borderBottomLeftRadius: 25,
         borderBottomRightRadius: 25,
-        flexDirection: 'row',
-        position: 'relative',
     },
     creatorIcon: {
-      color:colors.backGround,
- paddingTop:2,
-    paddingRight:0,
-    paddingLeft:3,
+        color: colors.iconColor,
+        paddingRight: 0,
+        paddingLeft: 3,
 
     },
     studentIcon: {
-        color:colors.backGround,
-    paddingTop:3.5,
-   marginRight:3,
-    paddingLeft:5,
-
+        color: colors.iconColor,
+        marginRight: 5,
+        paddingLeft: 5,
+          
     },
     headerText: {
         paddingTop: 8,
         paddingBottom: 5,
         paddingRight: 5,
-        color: colors.backGround,
+        color: colors.iconColor,
         fontFamily: fonts.initial,
         fontSize: 13,
     },
     menuIcon: {
         position: 'absolute',
         right: 10,
-        top: 11,
+        color: colors.iconColor,
     },
-    editIcon:{
+    editIcon: {
         position: 'absolute',
         right: 30,
-        top: 5.5,
-
+        color: colors.iconColor,
     },
-
     verticalLine: {
         width: 2,
         height: '65%',
         backgroundColor: colors.secondary,
         position: 'absolute',
         left: '45%',
-        top: 50,
+        top: '%50',
+           transform: [{ translateY: 45 }],
     },
     profileInfoContainer: {
+        position:'absolute',
         flexDirection: 'column',
-        alignSelf: 'center',
-        left: 5,
-        justifyContent: 'space-around',
-        alignContent:'center',
+        alignSelf: 'flex-start',
+   justifyContent:"center",
+      transform: [{ translateY: 50 }],
+       left: '45%',
+      
+  
     },
     profileInfoText: {
-        color: colors.backGround,
+        color: colors.iconColor,
         fontFamily: fonts.initial,
         fontSize: 11,
         paddingTop: 7,
-        paddingLeft:20,
-
+        paddingLeft: 20,
     },
     filterButtonsContainer: {
-   
         alignSelf: 'center',
         justifyContent: 'space-between',
         flexDirection: 'row',
-        marginTop: 5,
-        marginBottom:4,
+        marginTop: 10,
+        marginBottom: 4,
+        paddingHorizontal:4,
     },
     filterButton: {
-        backgroundColor: colors.backGround,
-        borderWidth: 1.5,
-        borderColor: colors.secondary,
+        backgroundColor: colors.initial,
+        borderWidth: 1,
+        borderColor: colors.iconColor,
         borderRadius: 11,
         alignItems: 'center',
-
-      
         flex: 1,
- 
         flexDirection: 'row',
         justifyContent: 'center',
     },
-
     buttonText: {
-        color: colors.secondary,
+        color: "black",
         margin: 3,
         paddingBottom: 5,
     },
-  
-
     videosGrid: {
         alignItems: 'flex-start', 
-        alignSelf:'center',
-        marginVertical:0,
-     
-    
+        alignSelf: 'center',
+        marginVertical: 0,
     },
-  videoItem: {
-    height: 250,
-    backgroundColor: '#ccc',
-    borderRadius: 11,
-         
-    
-  },
-  thumbnail: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 11,
-  },
+    videoItem: {
+        height: 250,
+        backgroundColor: '#ccc',
+        borderRadius: 11,
+     
+    },
+    thumbnail: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 11,
+      
+    },
 });
 
 export default Profile;
