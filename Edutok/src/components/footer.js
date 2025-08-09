@@ -1,5 +1,5 @@
-import { colors } from '../constants';
-import { StyleSheet, Text, View } from 'react-native';
+import { colors ,shadowIntensity} from '../constants';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 // Icons
@@ -7,11 +7,12 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Entypo from '@expo/vector-icons/Entypo';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+//will be removed
+import { user} from '../mockData';
 
 function Footer() {
      const router = useRouter();
     const insets = useSafeAreaInsets();
-    const user = "creator"; // Will be changed once we connect to the backend
 
     return (
         <View style={{
@@ -21,8 +22,9 @@ function Footer() {
             right: 0,
             left: 0,
               zIndex: 10,
+              
         }}>
-            <View style={styles.container}>
+            <View style={[styles.container]}>
                 <MaterialCommunityIcons 
                   onPress={() => router.push('fyp')}
                     name="home-outline" 
@@ -75,14 +77,16 @@ const styles = StyleSheet.create({
         backgroundColor: colors.initial,
         alignSelf: 'stretch',
         justifyContent: 'space-evenly',
-        
+       borderTopWidth: 1,
+       borderColor:colors.iconColor,  
     },
     
     icons: {
         paddingHorizontal: 5,
-        paddingVertical: 7,
-        margin: 3,
-        color: colors.backGround,
+        paddingVertical: 4,
+        marginHorizontal: 3,
+        color: colors.iconColor,
+        size:24,
     },
     
     plusIconContainer: {
@@ -100,7 +104,7 @@ const styles = StyleSheet.create({
     plusIcon: {
         position: 'absolute',
         top: -14,
-        color: colors.backGround,
+        color: colors.iconColor,
     }
 });
 
