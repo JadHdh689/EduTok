@@ -1,20 +1,19 @@
-import { useWindowDimensions, StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Constants
 import { colors, fonts, shadowIntensity } from '../src/constants';
 
 // Icons
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 function SignUp() {
     const { width, height } = useWindowDimensions();
     const router = useRouter();
-    
+
     // State Management
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -42,26 +41,51 @@ function SignUp() {
             return;
         }
 
-        setIsLoading(true);
-        
-        // TODO: Replace with actual authentication API call
-        setTimeout(() => {
+        try {
+            setIsLoading(true);
+
+            const res = await fetch(
+                `${process.env.EXPO_PUBLIC_API_URL}/api/auth/signup`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        password,
+                        preferences: [] // keep empty for now
+                        // role defaults to "learner" on backend
+                    })
+                }
+            );
+
+            const data = await res.json();
             setIsLoading(false);
-            // Simulate successful signup
-            router.replace('/profile');
-        }, 1000);
+
+            if (!res.ok) {
+                Alert.alert('Error', data.error || 'Signup failed');
+                return;
+            }
+
+            // SUCCESS: go to OTP screen with email
+            router.replace({ pathname: '/verifyOtp', params: { email } });
+
+        } catch (e) {
+            setIsLoading(false);
+            Alert.alert('Error', 'Network error. Try again.');
+        }
     };
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={[styles.header, { height: height * 0.25 }]}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => router.back()}
                 >
                     <Ionicons name="arrow-back" size={24} color={colors.iconColor} />
                 </TouchableOpacity>
-                
+
                 <View style={styles.headerContent}>
                     <MaterialIcons name="school" size={50} color={colors.iconColor} />
                     <Text style={styles.appTitle}>Join EduTok</Text>
@@ -74,17 +98,17 @@ function SignUp() {
 
                 {/* User Type Selection */}
                 <View style={styles.userTypeContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[
-                            styles.userTypeButton, 
+                            styles.userTypeButton,
                             userType === 'student' && styles.userTypeButtonActive
                         ]}
                         onPress={() => setUserType('student')}
                     >
-                        <MaterialIcons 
-                            name="school" 
-                            size={20} 
-                            color={userType === 'student' ? 'white' : colors.iconColor} 
+                        <MaterialIcons
+                            name="school"
+                            size={20}
+                            color={userType === 'student' ? 'white' : colors.iconColor}
                         />
                         <Text style={[
                             styles.userTypeText,
@@ -93,18 +117,18 @@ function SignUp() {
                             Student
                         </Text>
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         style={[
-                            styles.userTypeButton, 
+                            styles.userTypeButton,
                             userType === 'creator' && styles.userTypeButtonActive
                         ]}
                         onPress={() => setUserType('creator')}
                     >
-                        <MaterialIcons 
-                            name="video-camera-front" 
-                            size={20} 
-                            color={userType === 'creator' ? 'white' : colors.iconColor} 
+                        <MaterialIcons
+                            name="video-camera-front"
+                            size={20}
+                            color={userType === 'creator' ? 'white' : colors.iconColor}
                         />
                         <Text style={[
                             styles.userTypeText,
@@ -156,10 +180,10 @@ function SignUp() {
                         autoCapitalize="none"
                     />
                     <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                        <MaterialIcons 
-                            name={showPassword ? "visibility" : "visibility-off"} 
-                            size={20} 
-                            color="gray" 
+                        <MaterialIcons
+                            name={showPassword ? "visibility" : "visibility-off"}
+                            size={20}
+                            color="gray"
                         />
                     </TouchableOpacity>
                 </View>
@@ -177,16 +201,16 @@ function SignUp() {
                         autoCapitalize="none"
                     />
                     <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                        <MaterialIcons 
-                            name={showConfirmPassword ? "visibility" : "visibility-off"} 
-                            size={20} 
-                            color="gray" 
+                        <MaterialIcons
+                            name={showConfirmPassword ? "visibility" : "visibility-off"}
+                            size={20}
+                            color="gray"
                         />
                     </TouchableOpacity>
                 </View>
 
                 {/* Sign Up Button */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.signUpButton, shadowIntensity.bottomShadow]}
                     onPress={handleSignUp}
                     disabled={isLoading}
