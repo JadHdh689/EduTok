@@ -20,7 +20,7 @@ export const shadowIntensity = {
       width: 0,    // No horizontal shadow
       height: 2,   // Shadow only at bottom
     },
-    shadowOpacity: 1,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 5,  // For Android
   },

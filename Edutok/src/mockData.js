@@ -12,7 +12,24 @@ export const commonVideos = [
     likes: 120,
     Comments: 0,
     followed: true,
-    description: 'Learn how to build a full-stack app using React Native and Node.js with best practices.'
+    description: 'Learn how to build a full-stack app using React Native and Node.js with best practices.',
+    questions: [
+      { 
+        question: 'What is React Native?', 
+        options: ['A mobile framework', 'A web framework', 'A desktop framework'], 
+        answer: 'A mobile framework' 
+      },
+      { 
+        question: 'Which language does React Native use?', 
+        options: ['JavaScript', 'Python', 'Java'], 
+        answer: 'JavaScript' 
+      },
+      { 
+        question: 'What is the main advantage of React Native?', 
+        options: ['Cross-platform development', 'Better performance', 'Easier debugging'], 
+        answer: 'Cross-platform development' 
+      }
+    ]
   },
   {
     id: '2',
@@ -24,7 +41,24 @@ export const commonVideos = [
     profile: 'https://randomuser.me/api/portraits/men/46.jpg',
     likes: 0,
     Comments: 100,
-    description: 'Getting started with Expo — the easiest way to build and deploy mobile apps using JavaScript.'
+    description: 'Getting started with Expo — the easiest way to build and deploy mobile apps using JavaScript.',
+    questions: [
+      { 
+        question: 'What is Expo?', 
+        options: ['A development tool', 'A programming language', 'A database'], 
+        answer: 'A development tool' 
+      },
+      { 
+        question: 'Which platform does Expo support?', 
+        options: ['iOS only', 'Android only', 'Both iOS and Android'], 
+        answer: 'Both iOS and Android' 
+      },
+      { 
+        question: 'What is the main benefit of using Expo?', 
+        options: ['Faster development', 'Better performance', 'Lower cost'], 
+        answer: 'Faster development' 
+      }
+    ]
   },
   {
     id: '3',
@@ -36,7 +70,24 @@ export const commonVideos = [
     profile: 'https://randomuser.me/api/portraits/women/68.jpg',
     likes: 500,
     Comments: 25,
-    description: 'Follow this 30-minute full-body workout to stay energized and healthy at home.'
+    description: 'Follow this 30-minute full-body workout to stay energized and healthy at home.',
+    questions: [
+      { 
+        question: 'How long is this fitness routine?', 
+        options: ['15 minutes', '30 minutes', '45 minutes'], 
+        answer: '30 minutes' 
+      },
+      { 
+        question: 'What type of workout is this?', 
+        options: ['Cardio only', 'Strength only', 'Full-body workout'], 
+        answer: 'Full-body workout' 
+      },
+      { 
+        question: 'What is the main goal of this routine?', 
+        options: ['Build muscle', 'Lose weight', 'Stay energized and healthy'], 
+        answer: 'Stay energized and healthy' 
+      }
+    ]
   },
   {
     id: '4',

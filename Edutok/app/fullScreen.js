@@ -192,11 +192,16 @@ function FullScreen() {
 
 
                         {/* Quiz Button */}
-                        <TouchableOpacity style={styles.actionButton}>
-                            <MaterialIcons
-                                name="quiz"
-                                size={20}
-                                color="white"
+                        <TouchableOpacity style={styles.actionButton}
+                        onPress={() => router.push({
+                             pathname: 'quiz',
+                             params: { videoId: item.id }
+                           })} >
+                            <MaterialIcons 
+                                name="quiz" 
+                                size={20} 
+                                color="white" 
+                                
                             />
                         </TouchableOpacity>
 
