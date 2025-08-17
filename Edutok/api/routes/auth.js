@@ -102,4 +102,20 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Edit Profile route
+router.put('/profile', authMiddleware, async (req, res) => {
+  const { name, bio, preferences } = req.body;
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { name, bio, preferences },
+      { new: true }
+    );
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 module.exports = router;
