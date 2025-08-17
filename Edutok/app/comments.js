@@ -59,7 +59,7 @@ function Comments() {
     const { width, height } = useWindowDimensions();
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    
+
     // State Management
     const [comments, setComments] = useState(mockComments);
     const [newComment, setNewComment] = useState('');
@@ -93,7 +93,7 @@ function Comments() {
     // Comment Item Renderer
     const renderComment = ({ item }) => {
         const isLiked = likedComments[item.id] || false;
-        
+
         return (
             <View style={styles.commentItem}>
                 <View style={styles.commentHeader}>
@@ -105,31 +105,35 @@ function Comments() {
                         <Text style={styles.timestamp}>{item.timestamp}</Text>
                     </View>
                 </View>
-                
+
                 <Text style={styles.commentText}>{item.comment}</Text>
-                
+
                 <View style={styles.commentActions}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.actionButton}
                         onPress={() => handleLikeComment(item.id)}
                     >
-                        <AntDesign 
-                            name={isLiked ? "heart" : "hearto"} 
-                            size={16} 
-                            color={isLiked ? colors.favColor : "gray"} 
+                        <AntDesign
+                            name={isLiked ? "heart" : "hearto"}
+                            size={16}
+                            color={isLiked ? colors.favColor : "gray"}
                         />
                         <Text style={styles.actionText}>
                             {isLiked ? item.likes + 1 : item.likes}
                         </Text>
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity style={styles.actionButton}>
+
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => router.push('/reply')}
+                    >
                         <MaterialIcons name="reply" size={16} color="gray" />
                         <Text style={styles.actionText}>Reply</Text>
                     </TouchableOpacity>
-                    
+
+
                     {item.replies > 0 && (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => router.push('/reply')}
                         >
@@ -147,7 +151,7 @@ function Comments() {
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={[styles.header, shadowIntensity.bottomShadow]}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => router.back()}
                 >
@@ -157,7 +161,7 @@ function Comments() {
                 <Text style={styles.commentCount}>{comments.length} comments</Text>
             </View>
 
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
                 style={styles.content}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
@@ -189,7 +193,7 @@ function Comments() {
                             multiline
                             maxLength={500}
                         />
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={[
                                 styles.sendButton,
                                 newComment.trim() && styles.sendButtonActive
@@ -197,10 +201,10 @@ function Comments() {
                             onPress={handleAddComment}
                             disabled={!newComment.trim()}
                         >
-                            <MaterialIcons 
-                                name="send" 
-                                size={20} 
-                                color={newComment.trim() ? colors.iconColor : "gray"} 
+                            <MaterialIcons
+                                name="send"
+                                size={20}
+                                color={newComment.trim() ? colors.iconColor : "gray"}
                             />
                         </TouchableOpacity>
                     </View>

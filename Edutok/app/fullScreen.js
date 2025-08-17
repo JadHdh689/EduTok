@@ -8,7 +8,7 @@ import Footer from '../src/components/footer';
 import Report from '../src/components/Report';
 
 // Constants
-import { colors, fonts, maxCharacters,getDifficultyBadgeStyle } from '../src/constants';
+import { colors, fonts, maxCharacters, getDifficultyBadgeStyle } from '../src/constants';
 
 // Icons
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -23,17 +23,17 @@ function FullScreen() {
     // State Management
     const [fypState, setFypState] = useState("General");
     const [videos, setVideos] = useState(GeneralRetrivedVids); // TODO: Replace with API fetched data
-    
+
     // Navigation
     const router = useRouter();
     const params = useLocalSearchParams();
     const initialIndex = parseInt(params.initialIndex) || 0;
     const videoListType = params.videoList || 'general';
     const profileTab = params.profileTab || 'saved';
-    
+
     // Refs
     const flatListRef = useRef(null);
-    
+
     // Interaction States
     const [expandMap, setExpandMap] = useState({});
     const [likedMap, setLikedMap] = useState({});
@@ -86,8 +86,8 @@ function FullScreen() {
             return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
         } else if (num > 1000) {
             return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
-        } else if (num === 0) { 
-            return; 
+        } else if (num === 0) {
+            return;
         }
         return num;
     };
@@ -119,56 +119,56 @@ function FullScreen() {
                 {/* Video Content */}
                 <Image
                     source={{ uri: item.uri }}
-                    style={[styles.thumbnail, { width: width, height: height *0.97}]}
+                    style={[styles.thumbnail, { width: width, height: height * 0.97 }]}
                     resizeMode="contain"
                 />
-              
+
                 {/* Video Info Overlay */}
-                <View style={[styles.videoInfoContainer,{ width:width,bottom: insets.bottom + numPadding}]}>
+                <View style={[styles.videoInfoContainer, { width: width, bottom: insets.bottom + numPadding }]}>
                     {/* Left Side - Video Details */}
-    
-                    <View style={[styles.videoDetails,{ minHeight: height * 0.15,width: width*0.8,}]}>
-                                      <View style={{flexDirection:"row",alignContent:"flex-start"}}>   <Image
-  
-  source={{ uri: item.profile }} 
-  style={styles.profileImage}
-/><View>
-                        <TouchableOpacity onPress={() => setFollowedMap(prev => ({ ...prev, [id]: !isFollowed }))}>
-                            <View style={styles.followButton}>
-                                <Text style={styles.followButtonText}>
-                                    {isFollowed ? "unfollow" : "follow"}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                        <Text style={styles.creatorText}>{item.creator}</Text></View></View>  
-                        <Text 
+
+                    <View style={[styles.videoDetails, { minHeight: height * 0.15, width: width * 0.8, }]}>
+                        <View style={{ flexDirection: "row", alignContent: "flex-start" }}>   <Image
+
+                            source={{ uri: item.profile }}
+                            style={styles.profileImage}
+                        /><View>
+                                <TouchableOpacity onPress={() => setFollowedMap(prev => ({ ...prev, [id]: !isFollowed }))}>
+                                    <View style={styles.followButton}>
+                                        <Text style={styles.followButtonText}>
+                                            {isFollowed ? "unfollow" : "follow"}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                                <Text style={styles.creatorText}>{item.creator}</Text></View></View>
+                        <Text
                             style={styles.descriptionText}
                             onPress={() => setExpandMap(prev => ({ ...prev, [id]: !isExpanded }))}
                         >
                             {textSlice(item.description, needsExpansion, isExpanded)}
                         </Text>
-                    <View style={{flexDirection:"row",alignItems:"center",paddingBottom:3}}> 
-                        <View style={[styles.difficultyBadge,{backgroundColor:getDifficultyBadgeStyle(item.difficulty)}]}></View>
-                        <Text style={styles.tagsText}>
-                            {" #" + item.subject}
-                        </Text>
-                        </View> 
+                        <View style={{ flexDirection: "row", alignItems: "center", paddingBottom: 3 }}>
+                            <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyBadgeStyle(item.difficulty) }]}></View>
+                            <Text style={styles.tagsText}>
+                                {" #" + item.subject}
+                            </Text>
+                        </View>
                     </View>
 
                     {/* Right Side - Action Bar */}
                     <View style={styles.actionBar}>
                         {/* Like Button */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => {
                                 setLikedMap(prev => ({ ...prev, [id]: !isLiked }));
                                 setLikesMap(prev => ({ ...prev, [id]: isLiked ? likesCount - 1 : likesCount + 1 }));
                             }}
                         >
-                            <AntDesign 
-                                name={isLiked ? "heart" : "hearto"} 
-                                size={20} 
-                                color={isLiked ? colors.favColor : "white"} 
+                            <AntDesign
+                                name={isLiked ? "heart" : "hearto"}
+                                size={20}
+                                color={isLiked ? colors.favColor : "white"}
                             />
                             <Text style={styles.actionCount}>
                                 {handleLikesAndComments(likesMap[id] ?? item.likes)}
@@ -176,47 +176,51 @@ function FullScreen() {
                         </TouchableOpacity>
 
                         {/* Comment Button */}
-                        <TouchableOpacity style={styles.actionButton}>
-                            <MaterialCommunityIcons 
-                                name="comment-outline" 
-                                size={20} 
-                                color="white" 
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => router.push('/comments')}
+                        >
+                            <MaterialCommunityIcons
+                                name="comment-outline"
+                                size={20}
+                                color="white"
                             />
                             <Text style={styles.actionCount}>
                                 {handleLikesAndComments(item.Comments)}
                             </Text>
                         </TouchableOpacity>
 
+
                         {/* Quiz Button */}
                         <TouchableOpacity style={styles.actionButton}>
-                            <MaterialIcons 
-                                name="quiz" 
-                                size={20} 
-                                color="white" 
+                            <MaterialIcons
+                                name="quiz"
+                                size={20}
+                                color="white"
                             />
                         </TouchableOpacity>
 
                         {/* Save Button */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => setSavedMap(prev => ({ ...prev, [id]: !isSaved }))}
                         >
-                            <Fontisto 
-                                name={isSaved ? "bookmark-alt" : "bookmark"} 
-                                size={20} 
-                                color={isSaved ? colors.saveColor : "white"} 
+                            <Fontisto
+                                name={isSaved ? "bookmark-alt" : "bookmark"}
+                                size={20}
+                                color={isSaved ? colors.saveColor : "white"}
                             />
                         </TouchableOpacity>
 
                         {/* Report Button */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => setIsReportPopupVisibleMap(prev => ({ ...prev, [id]: !isReportPopupVisible }))}
                         >
-                            <MaterialIcons 
-                                name="report-gmailerrorred" 
-                                size={24} 
-                                color="white" 
+                            <MaterialIcons
+                                name="report-gmailerrorred"
+                                size={24}
+                                color="white"
                             />
                         </TouchableOpacity>
                     </View>
@@ -224,8 +228,8 @@ function FullScreen() {
 
                 {/* Report Popup */}
                 {isReportPopupVisible && (
-                    <Report 
-                        isVisible={isReportPopupVisible} 
+                    <Report
+                        isVisible={isReportPopupVisible}
                         onClose={() => setIsReportPopupVisibleMap(prev => ({ ...prev, [id]: false }))}
                     />
                 )}
@@ -256,9 +260,9 @@ function FullScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.title}>
-                        {fypState === "General" ? "General" : 
-                         fypState === "Followed" ? "Followed" : 
-                         fypState === "Profile" ? profileTab.charAt(0).toUpperCase() + profileTab.slice(1) : "Profile"}
+                        {fypState === "General" ? "General" :
+                            fypState === "Followed" ? "Followed" :
+                                fypState === "Profile" ? profileTab.charAt(0).toUpperCase() + profileTab.slice(1) : "Profile"}
                     </Text>
                     {fypState !== "Profile" && (
                         <MaterialCommunityIcons
@@ -302,17 +306,17 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         left: 11,
-        justifyContent: 'space-between',    
+        justifyContent: 'space-between',
     },
     videoDetails: {
         paddingTop: 4,
         paddingLeft: 11,
         flexDirection: 'column',
         borderRadius: 11,
-   
+
         marginRight: 10,
         width: '80%',
-        justifyContent: 'space-evenly', 
+        justifyContent: 'space-evenly',
     },
     followButton: {
         marginLeft: 10,
@@ -321,26 +325,26 @@ const styles = StyleSheet.create({
         paddingVertical: 3,
         borderRadius: 9,
         alignItems: 'center',
-     borderWidth:1,
-     borderColor:colors.initial,
+        borderWidth: 1,
+        borderColor: colors.initial,
     },
     followButtonText: {
         color: colors.initial,
         fontSize: 14,
         fontFamily: fonts.initial,
-        fontWeight:"bold",
+        fontWeight: "bold",
     },
     creatorText: {
         color: 'white',
         paddingLeft: 10,
         fontSize: 12,
-           
+
     },
     descriptionText: {
         color: 'white',
         paddingRight: 5,
-         fontSize: 13,
-        fontWeight:"bold",
+        fontSize: 13,
+        fontWeight: "bold",
     },
     tagsText: {
         color: '#efefefff',
@@ -373,7 +377,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 17,
         color: "white",
-      paddingLeft:9,
+        paddingLeft: 9,
         fontFamily: fonts.initial,
     },
     switchIcon: {
@@ -382,17 +386,17 @@ const styles = StyleSheet.create({
         paddingTop: 4,
         right: 0,
     },
-    difficultyBadge:{
-        width:10,
-        height:10,
-        borderRadius:13,
+    difficultyBadge: {
+        width: 10,
+        height: 10,
+        borderRadius: 13,
     },
     profileImage: {
-  width: 50,
-  height: 50,
-  borderRadius: 11,
+        width: 50,
+        height: 50,
+        borderRadius: 11,
 
-},
+    },
 
 });
 
