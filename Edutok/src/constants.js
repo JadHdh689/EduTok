@@ -1,7 +1,7 @@
 
 export const colors={
 initial:"rgba(247, 247, 247, 1)",
-secondary:"#bafdb5ff",
+secondary:"#fa0d0dff",
 iconColor:"#000000ff",
 screenColor:"rgba(247, 247, 247, 1)",
 saveColor:"#ffec8cff",
@@ -33,5 +33,3 @@ export const shadowIntensity = {
     default: return"#9E9E9E";
   }
 }; 
-
-
