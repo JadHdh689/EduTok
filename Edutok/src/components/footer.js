@@ -34,7 +34,6 @@ function Footer() {
                 />
                 
                 <Entypo 
-                    onPress={() => router.push('/fullScreen')} 
                     name="graduation-cap" 
                     size={24} 
                     style={styles.icons}

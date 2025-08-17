@@ -8,6 +8,7 @@ export const commonVideos = [
     subject: 'Programming',
     difficulty: 'hard',
     creator: 'Alice Dev',
+    profile: 'https://randomuser.me/api/portraits/women/44.jpg',
     likes: 120,
     Comments: 0,
     followed: true,
@@ -20,6 +21,7 @@ export const commonVideos = [
     subject: 'Programming',
     difficulty: 'easy',
     creator: 'Bob Coder',
+    profile: 'https://randomuser.me/api/portraits/men/46.jpg',
     likes: 0,
     Comments: 100,
     description: 'Getting started with Expo — the easiest way to build and deploy mobile apps using JavaScript.'
@@ -31,6 +33,7 @@ export const commonVideos = [
     subject: 'Fitness',
     difficulty: 'intermediate',
     creator: 'FitWithLena',
+    profile: 'https://randomuser.me/api/portraits/women/68.jpg',
     likes: 500,
     Comments: 25,
     description: 'Follow this 30-minute full-body workout to stay energized and healthy at home.'
@@ -42,6 +45,7 @@ export const commonVideos = [
     subject: 'Nature',
     difficulty: 'easy',
     creator: 'OutdoorJules',
+    profile: 'https://randomuser.me/api/portraits/men/11.jpg',
     likes: 10000000,
     Comments: 10000,
     followed: true,
@@ -54,6 +58,7 @@ export const commonVideos = [
     subject: 'Cooking',
     difficulty: 'hard',
     creator: 'Chef Marco',
+    profile: 'https://randomuser.me/api/portraits/men/22.jpg',
     likes: 9,
     Comments: 10,
     description: 'Master the art of Italian pasta with this detailed recipe and step-by-step cooking guide.'
@@ -65,6 +70,7 @@ export const commonVideos = [
     subject: 'Music',
     difficulty: 'easy',
     creator: 'LoFiVibes',
+    profile: 'https://randomuser.me/api/portraits/women/12.jpg',
     likes: 25000,
     Comments: 500,
     description: 'Relax and focus with this curated playlist of calming lofi beats and ambient sounds.'
@@ -76,6 +82,7 @@ export const commonVideos = [
     subject: 'Travel',
     difficulty: 'intermediate',
     creator: 'WanderWithRay',
+    profile: 'https://randomuser.me/api/portraits/men/71.jpg',
     likes: 1200,
     Comments: 85,
     description: 'Explore the majestic landscapes and hidden trails of Nepal in this travel vlog series.'
@@ -87,13 +94,14 @@ export const commonVideos = [
     subject: 'Programming',
     difficulty: 'easy',
     creator: 'CodeFlow',
+    profile: 'https://randomuser.me/api/portraits/men/33.jpg',
     likes: 800,
     Comments: 42,
     description: 'Join a calm and productive coding session designed to help you stay focused and inspired.'
   }
 ];
 
-// Different video categories can reuse the same base data with slight modifications
+// Different video categories can reuse the same base data
 export const GeneralRetrivedVids = [...commonVideos];
 export const FollowedRetrivedVids = [...commonVideos];
 export const savedVideos = [...commonVideos];
