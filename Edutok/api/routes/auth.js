@@ -2,10 +2,13 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+
 const User = require('../models/user');
 const sendEmail = require('../utils/sendEmail');
+const authMiddleware = require('../middleware/auth');
 
-// Signup Route
+// -------------------- SIGNUP --------------------
 router.post('/signup', async (req, res) => {
   const { name, email, password, preferences } = req.body;
 
@@ -14,6 +17,7 @@ router.post('/signup', async (req, res) => {
     if (existing) return res.status(400).json({ error: 'Email already in use' });
 
     const password_hash = await bcrypt.hash(password, 12);
+
     const otp = crypto.randomInt(100000, 999999).toString();
     const otp_expires_at = new Date(Date.now() + 5 * 60 * 1000); // 5 min
 
@@ -34,13 +38,15 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-// OTP Verification Route
+// -------------------- VERIFY OTP --------------------
 router.post('/verify-otp', async (req, res) => {
   const { email, otp } = req.body;
 
   try {
     const user = await User.findOne({ email });
-    if (!user || user.is_verified) return res.status(400).json({ error: 'Invalid request' });
+    if (!user || user.is_verified) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
 
     const now = new Date();
     if (user.otp_code !== otp || now > user.otp_expires_at) {
@@ -59,9 +65,7 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-const jwt = require('jsonwebtoken');
-
-// Login Route
+// -------------------- LOGIN --------------------
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -77,11 +81,7 @@ router.post('/login', async (req, res) => {
     if (!isMatch) return res.status(400).json({ error: 'Invalid email or password' });
 
     const token = jwt.sign(
-      {
-        user_id: user._id,
-        role: user.role,
-        is_admin: user.is_admin
-      },
+      { user_id: user._id, role: user.role, is_admin: user.is_admin },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -90,6 +90,7 @@ router.post('/login', async (req, res) => {
       message: 'Login successful',
       token,
       user: {
+        id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -102,70 +103,70 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Edit Profile route
+// -------------------- EDIT PROFILE --------------------
 router.put('/profile', authMiddleware, async (req, res) => {
   const { name, bio, preferences } = req.body;
+
   try {
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { name, bio, preferences },
       { new: true }
-    );
+    ).select('-password_hash -otp_code -otp_expires_at'); // don’t send sensitive fields
+
     res.json(user);
+
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ error: 'Profile update failed' });
   }
 });
 
-// Forgot Password Route
+// -------------------- FORGOT PASSWORD --------------------
 router.post('/forgot-password', async (req, res) => {
   const { email } = req.body;
 
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'Email not found' });
+    if (!user) return res.status(400).json({ error: 'User not found' });
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
-    const resetTokenExpire = Date.now() + 10 * 60 * 1000; // 10 min
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otp_expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
-    user.reset_password_token = resetTokenHash;
-    user.reset_password_expires = resetTokenExpire;
+    user.otp_code = otp;
+    user.otp_expires_at = otp_expires_at;
     await user.save();
 
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&email=${email}`;
-    await sendEmail(email, `Reset your EduTok password using this link: ${resetLink}`);
+    await sendEmail(email, `Your EduTok password reset code: ${otp}`);
 
-    res.status(200).json({ message: 'Password reset link sent to your email' });
+    res.json({ message: 'Reset code sent to your email' });
+
   } catch (err) {
-    res.status(500).json({ error: 'Could not send reset link' });
+    res.status(500).json({ error: 'Forgot password failed' });
   }
 });
 
-// Reset Password Route
+// -------------------- RESET PASSWORD --------------------
 router.post('/reset-password', async (req, res) => {
-  const { email, token, newPassword } = req.body;
+  const { email, otp, newPassword } = req.body;
 
   try {
-    const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const user = await User.findOne({
-      email,
-      reset_password_token: resetTokenHash,
-      reset_password_expires: { $gt: Date.now() }
-    });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: 'User not found' });
 
-    if (!user) return res.status(400).json({ error: 'Invalid or expired reset token' });
+    if (user.otp_code !== otp || Date.now() > user.otp_expires_at) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
 
     user.password_hash = await bcrypt.hash(newPassword, 12);
-    user.reset_password_token = undefined;
-    user.reset_password_expires = undefined;
+    user.otp_code = undefined;
+    user.otp_expires_at = undefined;
     await user.save();
 
-    res.status(200).json({ message: 'Password has been reset successfully' });
+    res.json({ message: 'Password reset successful' });
+
   } catch (err) {
-    res.status(500).json({ error: 'Password reset failed' });
+    res.status(500).json({ error: 'Reset password failed' });
   }
 });
-
 
 module.exports = router;

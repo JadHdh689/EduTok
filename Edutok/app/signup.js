@@ -2,9 +2,13 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Constants
 import { colors, fonts, shadowIntensity } from '../src/constants';
+
+// Config (API base URL)
+import { API_URL } from '../config';
 
 // Icons
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -19,7 +23,7 @@ function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [userType, setUserType] = useState('student'); // UI only for now
+  const [userType, setUserType] = useState('student'); // Optional role selector
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,16 +54,15 @@ function SignUp() {
     try {
       setIsLoading(true);
 
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/signup`, {
+      const res = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: nameTrimmed,
           email: emailNormalized,
           password,
-          preferences: []
-          // optional now:
-          // role: userType === 'creator' ? 'creator' : 'learner'
+          preferences: [],
+          role: userType === 'creator' ? 'creator' : 'learner'
         })
       });
 
@@ -70,14 +73,37 @@ function SignUp() {
         data = { error: 'Unexpected server response' };
       }
 
-      setIsLoading(false);
-
       if (!res.ok) {
+        setIsLoading(false);
         Alert.alert('Error', data?.error || 'Signup failed');
         return;
       }
 
-      router.replace({ pathname: '/verifyOtp', params: { email: emailNormalized } });
+      // Store token
+      await AsyncStorage.setItem('auth_token', data.token);
+
+      // Fetch user info
+      let userInfo = data.user || null;
+      try {
+        const meRes = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${data.token}` },
+        });
+        if (meRes.ok) {
+          userInfo = await meRes.json();
+        }
+      } catch (err) {
+        console.log('Error fetching /auth/me:', err);
+      }
+
+      if (userInfo) {
+        await AsyncStorage.setItem('user_info', JSON.stringify(userInfo));
+      }
+
+      setIsLoading(false);
+      Alert.alert('Success', 'Account created successfully');
+
+      // Navigate to profile directly
+      router.replace('/profile');
     } catch {
       setIsLoading(false);
       Alert.alert('Error', 'Network error. Try again.');
@@ -101,7 +127,7 @@ function SignUp() {
         <Text style={styles.formTitle}>Create Account</Text>
         <Text style={styles.formSubtitle}>Start your learning journey today</Text>
 
-        {/* User Type Selection (UI only for now) */}
+        {/* User Type Selection */}
         <View style={styles.userTypeContainer}>
           <TouchableOpacity
             style={[styles.userTypeButton, userType === 'student' && styles.userTypeButtonActive]}
@@ -133,7 +159,7 @@ function SignUp() {
         </View>
 
         {/* Name */}
-        <View className="inputContainer" style={styles.inputContainer}>
+        <View style={styles.inputContainer}>
           <MaterialIcons name="person" size={20} color="gray" style={styles.inputIcon} />
           <TextInput
             style={styles.textInput}

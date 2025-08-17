@@ -9,7 +9,8 @@ import { colors, fonts, shadowIntensity } from '../src/constants';
 
 // Icons
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import AntDesign from '@expo/vector-icons/AntDesign';
+
+import CONFIG from '../config'; // ✅ centralized API config
 
 function Login() {
   const { height } = useWindowDimensions();
@@ -22,54 +23,69 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+  if (!email || !password) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
 
-    // normalize + basic email format check
-    const emailNormalized = email.trim().toLowerCase();
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
-    if (!emailOk) {
-      Alert.alert('Error', 'Enter a valid email address');
-      return;
-    }
+  const emailNormalized = email.trim().toLowerCase();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
+  if (!emailOk) {
+    Alert.alert('Error', 'Enter a valid email address');
+    return;
+  }
 
+  try {
+    setIsLoading(true);
+
+    // 1. Login request
+    const res = await fetch(`${CONFIG.API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailNormalized, password }),
+    });
+
+    let data = null;
     try {
-      setIsLoading(true);
-
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailNormalized, password })
-      });
-
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {
-        data = { error: 'Unexpected server response' };
-      }
-
-      setIsLoading(false);
-
-      if (!res.ok) {
-        Alert.alert('Error', data?.error || 'Login failed');
-        return;
-      }
-
-      // save token (+ optionally user)
-      await AsyncStorage.setItem('auth_token', data.token);
-      if (data.user) {
-        await AsyncStorage.setItem('user_info', JSON.stringify(data.user));
-      }
-
-      router.replace('/profile');
+      data = await res.json();
     } catch {
-      setIsLoading(false);
-      Alert.alert('Error', 'Network error. Try again.');
+      data = { error: 'Unexpected server response' };
     }
-  };
+
+    if (!res.ok) {
+      setIsLoading(false);
+      Alert.alert('Error', data?.error || 'Login failed');
+      return;
+    }
+
+    // 2. Save token
+    await AsyncStorage.setItem('auth_token', data.token);
+
+    // 3. Always refresh user info from backend
+    let userInfo = data.user || null;
+    try {
+      const meRes = await fetch(`${CONFIG.API_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+      });
+      if (meRes.ok) {
+        userInfo = await meRes.json();
+      }
+    } catch (err) {
+      console.log('Error fetching /auth/me:', err);
+    }
+
+    if (userInfo) {
+      await AsyncStorage.setItem('user_info', JSON.stringify(userInfo));
+    }
+
+    setIsLoading(false);
+    Alert.alert('Success', 'Login successful');
+    router.replace('/profile');
+  } catch (err) {
+    setIsLoading(false);
+    Alert.alert('Error', 'Network error. Try again.');
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -86,7 +102,7 @@ function Login() {
         <Text style={styles.formSubtitle}>Sign in to continue learning</Text>
 
         {/* Email */}
-        <View className="inputContainer" style={styles.inputContainer}>
+        <View style={styles.inputContainer}>
           <MaterialIcons name="email" size={20} color="gray" style={styles.inputIcon} />
           <TextInput
             style={styles.textInput}
@@ -113,7 +129,11 @@ function Login() {
             autoCapitalize="none"
           />
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <MaterialIcons name={showPassword ? 'visibility' : 'visibility-off'} size={20} color="gray" />
+            <MaterialIcons
+              name={showPassword ? 'visibility' : 'visibility-off'}
+              size={20}
+              color="gray"
+            />
           </TouchableOpacity>
         </View>
 
@@ -123,11 +143,16 @@ function Login() {
           onPress={handleLogin}
           disabled={isLoading}
         >
-          <Text style={styles.loginButtonText}>{isLoading ? 'Signing In...' : 'Sign In'}</Text>
+          <Text style={styles.loginButtonText}>
+            {isLoading ? 'Signing In...' : 'Sign In'}
+          </Text>
         </TouchableOpacity>
 
         {/* Forgot Password */}
-        <TouchableOpacity style={styles.forgotPassword} onPress={() => router.push('/forgotPassword')}>
+        <TouchableOpacity
+          style={styles.forgotPassword}
+          onPress={() => router.push('/forgotPassword')}
+        >
           <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
@@ -160,7 +185,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontWeight: 'bold',
   },
-  subtitle: { fontSize: 16, fontFamily: fonts.initial, color: 'gray', marginTop: 5 },
+  subtitle: {
+    fontSize: 16,
+    fontFamily: fonts.initial,
+    color: 'gray',
+    marginTop: 5,
+  },
   formContainer: { flex: 1, paddingHorizontal: 30, paddingTop: 40 },
   formTitle: {
     fontSize: 28,
@@ -170,7 +200,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
-  formSubtitle: { fontSize: 16, fontFamily: fonts.initial, color: 'gray', textAlign: 'center', marginBottom: 40 },
+  formSubtitle: {
+    fontSize: 16,
+    fontFamily: fonts.initial,
+    color: 'gray',
+    textAlign: 'center',
+    marginBottom: 40,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -183,7 +219,12 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
   },
   inputIcon: { marginRight: 10 },
-  textInput: { flex: 1, fontSize: 16, fontFamily: fonts.initial, color: colors.iconColor },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: fonts.initial,
+    color: colors.iconColor,
+  },
   loginButton: {
     backgroundColor: colors.iconColor,
     borderRadius: 12,
@@ -192,12 +233,26 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-  loginButtonText: { color: 'white', fontSize: 18, fontFamily: fonts.initial, fontWeight: 'bold' },
+  loginButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontFamily: fonts.initial,
+    fontWeight: 'bold',
+  },
   forgotPassword: { alignItems: 'center', marginBottom: 30 },
   forgotPasswordText: { color: colors.iconColor, fontSize: 14, fontFamily: fonts.initial },
-  signUpContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  signUpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   signUpText: { color: 'gray', fontSize: 16, fontFamily: fonts.initial },
-  signUpLink: { color: colors.iconColor, fontSize: 16, fontFamily: fonts.initial, fontWeight: 'bold' },
+  signUpLink: {
+    color: colors.iconColor,
+    fontSize: 16,
+    fontFamily: fonts.initial,
+    fontWeight: 'bold',
+  },
 });
 
 export default Login;

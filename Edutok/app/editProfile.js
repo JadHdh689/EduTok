@@ -17,6 +17,7 @@ import Fontisto from '@expo/vector-icons/Fontisto';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';   // ✅ use centralized config
 
 function EditProfile() {
   const { height, width } = useWindowDimensions();
@@ -84,7 +85,7 @@ function EditProfile() {
       }
 
       await axios.put(
-        "http://localhost:5000/api/auth/profile", // ⚠️ Change to your backend base URL
+        `${API_BASE_URL}/auth/profile`,   // ✅ use config base URL
         {
           name: userName,
           bio,
@@ -98,7 +99,7 @@ function EditProfile() {
       Alert.alert("Success", "Profile updated successfully!");
       router.push('/profile');
     } catch (err) {
-      console.error(err);
+      console.error("Profile update failed:", err.response?.data || err.message);
       Alert.alert("Error", "Failed to update profile");
     }
   };

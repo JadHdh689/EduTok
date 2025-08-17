@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { API_URL } from '../config'; // ✅ use centralized config
 
 export default function VerifyOtp() {
   const { email } = useLocalSearchParams();
@@ -15,15 +16,19 @@ export default function VerifyOtp() {
     }
     try {
       setLoading(true);
-      const res = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/auth/verify-otp`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, otp })
-        }
-      );
-      const data = await res.json();
+      const res = await fetch(`${API_URL}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp })
+      });
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: 'Unexpected server response' };
+      }
+
       setLoading(false);
 
       if (!res.ok) {
@@ -33,8 +38,7 @@ export default function VerifyOtp() {
 
       Alert.alert('Success', 'Account verified. Please sign in.');
       router.replace('/login');
-
-    } catch (e) {
+    } catch {
       setLoading(false);
       Alert.alert('Error', 'Network error. Try again.');
     }
@@ -55,7 +59,12 @@ export default function VerifyOtp() {
       <TouchableOpacity
         onPress={handleVerify}
         disabled={loading}
-        style={{ marginTop: 16, padding: 14, borderRadius: 10, backgroundColor: 'black' }}
+        style={{
+          marginTop: 16,
+          padding: 14,
+          borderRadius: 10,
+          backgroundColor: 'black',
+        }}
       >
         <Text style={{ color: 'white', textAlign: 'center' }}>
           {loading ? 'Verifying…' : 'Verify'}
