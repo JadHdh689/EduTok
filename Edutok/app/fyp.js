@@ -1,6 +1,7 @@
 import { useWindowDimensions, StyleSheet, View, Text, Image, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 
 // Components
 import Footer from '../src/components/footer';
@@ -25,6 +26,9 @@ function Fyp() {
     const spacing = 8;
     const itemWidth = ((width - spacing * 3) / 2);
 
+    // Navigation
+    const router = useRouter();
+
     // Tab Change Handler
     const handleTabChange = () => {
         if (fypState == "General") {
@@ -35,15 +39,29 @@ function Fyp() {
             setVideos(GeneralRetrivedVids); // TODO: Fetch general videos from backend
         }
     };
-  
+
+    // Handle video selection
+    const handleVideoPress = (selectedVideo) => {
+        const videoIndex = videos.findIndex(video => video.id === selectedVideo.id);
+        router.push({
+            pathname: '/fullScreen',
+            params: { 
+                initialIndex: videoIndex,
+                videoList: fypState === "General" ? "general" : "followed"
+            }
+        });
+    };
 
     // Video Item Renderer
     const renderVideoItem = ({ item }) => (
-        <TouchableOpacity style={[
-            styles.videoItem, 
-            { width: itemWidth }, 
-            { margin: spacing / 2 }
-        ]}>
+        <TouchableOpacity 
+            style={[
+                styles.videoItem, 
+                { width: itemWidth }, 
+                { margin: spacing / 2 }
+            ]}
+            onPress={() => handleVideoPress(item)}
+        >
             <Image source={{ uri: item.uri }} style={styles.thumbnail} />
             
             {/* Difficulty/Subject Badge */}

@@ -1,6 +1,7 @@
 import { Image, FlatList, useWindowDimensions, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Components
 import Footer from '../src/components/footer';
@@ -16,12 +17,22 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Fontisto from '@expo/vector-icons/Fontisto';
 
 // Mock Data - Will be replaced with API calls
-import { user, GeneralRetrivedVids, FollowedRetrivedVids } from '../src/mockData';
+import { user, GeneralRetrivedVids, FollowedRetrivedVids, myVideos } from '../src/mockData';
 
 function FullScreen() {
     // State Management
     const [fypState, setFypState] = useState("General");
     const [videos, setVideos] = useState(GeneralRetrivedVids); // TODO: Replace with API fetched data
+    
+    // Navigation
+    const router = useRouter();
+    const params = useLocalSearchParams();
+    const initialIndex = parseInt(params.initialIndex) || 0;
+    const videoListType = params.videoList || 'general';
+    const profileTab = params.profileTab || 'saved';
+    
+    // Refs
+    const flatListRef = useRef(null);
     
     // Interaction States
     const [expandMap, setExpandMap] = useState({});
@@ -35,6 +46,32 @@ function FullScreen() {
     const { width, height } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const numPadding = user === 'creator' ? 20 : 0;
+
+    // Initialize videos based on navigation params and scroll to initial index
+    useEffect(() => {
+        if (videoListType === 'followed') {
+            setVideos(FollowedRetrivedVids);
+            setFypState("Followed");
+        } else if (videoListType === 'profile') {
+            setVideos(myVideos);
+            setFypState("Profile");
+        } else {
+            setVideos(GeneralRetrivedVids);
+            setFypState("General");
+        }
+    }, [videoListType]);
+
+    // Scroll to initial video when component mounts
+    useEffect(() => {
+        if (flatListRef.current && initialIndex > 0) {
+            setTimeout(() => {
+                flatListRef.current.scrollToIndex({
+                    index: initialIndex,
+                    animated: false
+                });
+            }, 100);
+        }
+    }, [initialIndex]);
 
     // Text Utilities
     const textSlice = (text, needsExpansion, isExpanded) => {
@@ -80,12 +117,22 @@ function FullScreen() {
         return (
             <SafeAreaView style={{ flex: 1, height: height }}>
                 {/* Video Content */}
-                <Image source={{ uri: item.uri }} style={styles.thumbnail} />
-
+                <Image
+                    source={{ uri: item.uri }}
+                    style={[styles.thumbnail, { width: width, height: height *0.97}]}
+                    resizeMode="contain"
+                />
+              
                 {/* Video Info Overlay */}
                 <View style={[styles.videoInfoContainer,{ width:width,bottom: insets.bottom + numPadding}]}>
                     {/* Left Side - Video Details */}
+    
                     <View style={[styles.videoDetails,{ minHeight: height * 0.15,width: width*0.8,}]}>
+                                      <View style={{flexDirection:"row",alignContent:"flex-start"}}>   <Image
+  
+  source={{ uri: item.profile }} 
+  style={styles.profileImage}
+/><View>
                         <TouchableOpacity onPress={() => setFollowedMap(prev => ({ ...prev, [id]: !isFollowed }))}>
                             <View style={styles.followButton}>
                                 <Text style={styles.followButtonText}>
@@ -93,7 +140,7 @@ function FullScreen() {
                                 </Text>
                             </View>
                         </TouchableOpacity>
-                        <Text style={styles.creatorText}>{item.creator}</Text>
+                        <Text style={styles.creatorText}>{item.creator}</Text></View></View>  
                         <Text 
                             style={styles.descriptionText}
                             onPress={() => setExpandMap(prev => ({ ...prev, [id]: !isExpanded }))}
@@ -191,6 +238,7 @@ function FullScreen() {
             <View style={styles.container}>
                 {/* Video List */}
                 <FlatList
+                    ref={flatListRef}
                     data={videos}
                     renderItem={renderVideoItem}
                     keyExtractor={(item) => item.id}
@@ -198,20 +246,29 @@ function FullScreen() {
                     pagingEnabled
                     showsVerticalScrollIndicator={false}
                     decelerationRate="fast"
+                    initialScrollIndex={initialIndex}
+                    getItemLayout={(data, index) => ({
+                        length: height,
+                        offset: height * index,
+                        index,
+                    })}
                 />
-
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.title}>
-                        {fypState == "General" ? "General" : "Followed"}
+                        {fypState === "General" ? "General" : 
+                         fypState === "Followed" ? "Followed" : 
+                         fypState === "Profile" ? profileTab.charAt(0).toUpperCase() + profileTab.slice(1) : "Profile"}
                     </Text>
-                    <MaterialCommunityIcons
-                        onPress={handleTabChange}
-                        name="rotate-3d-variant"
-                        size={24}
-                        color="white"
-                        style={styles.switchIcon}
-                    />
+                    {fypState !== "Profile" && (
+                        <MaterialCommunityIcons
+                            onPress={handleTabChange}
+                            name="rotate-3d-variant"
+                            size={24}
+                            color="white"
+                            style={styles.switchIcon}
+                        />
+                    )}
                 </View>
             </View>
 
@@ -252,13 +309,13 @@ const styles = StyleSheet.create({
         paddingLeft: 11,
         flexDirection: 'column',
         borderRadius: 11,
-        backgroundColor: '#ffffff25',
+   
         marginRight: 10,
         width: '80%',
         justifyContent: 'space-evenly', 
     },
     followButton: {
-        marginLeft: 90,
+        marginLeft: 10,
         maxWidth: 100,
         paddingHorizontal: 10,
         paddingVertical: 3,
@@ -275,7 +332,7 @@ const styles = StyleSheet.create({
     },
     creatorText: {
         color: 'white',
-        paddingLeft: 93,
+        paddingLeft: 10,
         fontSize: 12,
            
     },
@@ -330,6 +387,13 @@ const styles = StyleSheet.create({
         height:10,
         borderRadius:13,
     },
+    profileImage: {
+  width: 50,
+  height: 50,
+  borderRadius: 11,
+
+},
+
 });
 
 export default FullScreen;

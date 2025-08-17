@@ -36,7 +36,7 @@ function Profile() {
     // Video Data State
     // TODO: Replace with API fetched data
     const [videos, setVideos] = useState(savedVideos); // Will be fetched from backend
-
+    const [tab, setTab] = useState('saved');
     //for navigation
      const router = useRouter();
 
@@ -48,21 +48,37 @@ function Profile() {
     // Tab Change Handler
     const handleTabChange = (tab) => {
         if (tab === 'saved') {
+            setTab('saved');
             setSavedIcon('bookmark-alt');
             setFavoriteIcon('hearto');
             setMineIcon('video-camera-back');
             setVideos(savedVideos); // TODO: Fetch saved videos from backend
         } else if (tab === 'mine') {
+            setTab('mine');
             setSavedIcon('bookmark');
             setFavoriteIcon('hearto');
             setMineIcon('video-camera-front');
             setVideos(myVideos); // TODO: Fetch user's videos from backend
         } else if (tab === 'favorite') {
+            setTab('favorite');
             setSavedIcon('bookmark');
             setFavoriteIcon('heart');
             setMineIcon('video-camera-back');
             setVideos(favoriteVideos); // TODO: Fetch favorite videos from backend
         }
+    };
+
+    // Handle video selection
+    const handleVideoPress = (selectedVideo) => {
+        const videoIndex = videos.findIndex(video => video.id === selectedVideo.id);
+        router.push({
+            pathname: '/fullScreen',
+            params: { 
+                initialIndex: videoIndex,
+                videoList: 'profile',
+                profileTab: tab
+            }
+        });
     };
 
     // Video Item Renderer
@@ -73,6 +89,7 @@ function Profile() {
                 { width: itemWidthCreator }, 
                 { margin: spacing / 2 }
             ]}
+            onPress={() => handleVideoPress(item)}
         >
             <Image source={{ uri: item.uri }} style={styles.thumbnail} />
         </TouchableOpacity>
