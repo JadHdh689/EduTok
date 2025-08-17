@@ -117,5 +117,55 @@ router.put('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// Forgot Password Route
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: 'Email not found' });
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const resetTokenExpire = Date.now() + 10 * 60 * 1000; // 10 min
+
+    user.reset_password_token = resetTokenHash;
+    user.reset_password_expires = resetTokenExpire;
+    await user.save();
+
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&email=${email}`;
+    await sendEmail(email, `Reset your EduTok password using this link: ${resetLink}`);
+
+    res.status(200).json({ message: 'Password reset link sent to your email' });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not send reset link' });
+  }
+});
+
+// Reset Password Route
+router.post('/reset-password', async (req, res) => {
+  const { email, token, newPassword } = req.body;
+
+  try {
+    const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({
+      email,
+      reset_password_token: resetTokenHash,
+      reset_password_expires: { $gt: Date.now() }
+    });
+
+    if (!user) return res.status(400).json({ error: 'Invalid or expired reset token' });
+
+    user.password_hash = await bcrypt.hash(newPassword, 12);
+    user.reset_password_token = undefined;
+    user.reset_password_expires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: 'Password has been reset successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
 
 module.exports = router;
