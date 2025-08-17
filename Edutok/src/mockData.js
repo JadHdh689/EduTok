@@ -1,6 +1,6 @@
 export const user = "creator";
 
-const commonVideos = [
+export const commonVideos = [
   {
     id: '1',
     title: 'React Native Tutorial',

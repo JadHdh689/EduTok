@@ -51,6 +51,7 @@ function Footer() {
                             name="pluscircle" 
                             size={30} 
                             style={styles.plusIcon}
+                             onPress={() => router.push('/upload')} 
                         /> 
                     </View>
                 )}
