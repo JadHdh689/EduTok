@@ -26,50 +26,78 @@ function Profile() {
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-    // Video Data State
-    // TODO: Replace with API fetched data
-    const [videos, setVideos] = useState(savedVideos); // Will be fetched from backend
+  // Auth + basic user state
+  const [tokenChecked, setTokenChecked] = useState(false);
+  const [userRole, setUserRole] = useState(mockUser?.role || 'learner');
+  const [userName, setUserName] = useState(mockUser?.name || 'Jane Joe');
 
-    //for navigation
-     const router = useRouter();
+  // UI state
+  const spacing = 8;
+  const itemWidthCreator = (width - spacing * 4) / 3;
+  const itemWidthLearner = (width - spacing * 2) / 2;
 
-    // Icon States
-    const [savedIcon, setSavedIcon] = useState('bookmark-alt');
-    const [mineIcon, setMineIcon] = useState('video-camera-back');
-    const [favoriteIcon, setFavoriteIcon] = useState('hearto');
+  // Videos state (temporary with mock)
+  const [videos, setVideos] = useState(savedVideos);
 
-    // Tab Change Handler
-    const handleTabChange = (tab) => {
-        if (tab === 'saved') {
-            setSavedIcon('bookmark-alt');
-            setFavoriteIcon('hearto');
-            setMineIcon('video-camera-back');
-            setVideos(savedVideos); // TODO: Fetch saved videos from backend
-        } else if (tab === 'mine') {
-            setSavedIcon('bookmark');
-            setFavoriteIcon('hearto');
-            setMineIcon('video-camera-front');
-            setVideos(myVideos); // TODO: Fetch user's videos from backend
-        } else if (tab === 'favorite') {
-            setSavedIcon('bookmark');
-            setFavoriteIcon('heart');
-            setMineIcon('video-camera-back');
-            setVideos(favoriteVideos); // TODO: Fetch favorite videos from backend
+  // Icons state
+  const [savedIcon, setSavedIcon] = useState('bookmark-alt');
+  const [mineIcon, setMineIcon] = useState('video-camera-back');
+  const [favoriteIcon, setFavoriteIcon] = useState('hearto');
+
+  // Require login: if no token, redirect to login
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = await AsyncStorage.getItem('auth_token');
+        if (!token) {
+          router.replace('/login');
+          return;
         }
-    };
+        // Later: fetch profile with token and set real userRole/userName here
+        setTokenChecked(true);
+      } catch {
+        Alert.alert('Error', 'Auth check failed');
+        router.replace('/login');
+      }
+    })();
+  }, [router]);
 
-    // Video Item Renderer
-    const renderVideoItem = ({ item }) => (
-        <TouchableOpacity 
-            style={[
-                styles.videoItem, 
-                { width: itemWidthCreator }, 
-                { margin: spacing / 2 }
-            ]}
-        >
-            <Image source={{ uri: item.uri }} style={styles.thumbnail} />
-        </TouchableOpacity>
-    );
+  // Tab switcher (mock data for now)
+  const handleTabChange = (tab) => {
+    if (tab === 'saved') {
+      setSavedIcon('bookmark-alt');
+      setFavoriteIcon('hearto');
+      setMineIcon('video-camera-back');
+      setVideos(savedVideos);
+    } else if (tab === 'mine') {
+      setSavedIcon('bookmark');
+      setFavoriteIcon('hearto');
+      setMineIcon('video-camera-front');
+      setVideos(myVideos);
+    } else if (tab === 'favorite') {
+      setSavedIcon('bookmark');
+      setFavoriteIcon('heart');
+      setMineIcon('video-camera-back');
+      setVideos(favoriteVideos);
+    }
+  };
+
+  // Grid item
+  const renderVideoItem = ({ item }) => (
+    <TouchableOpacity
+      style={[
+        styles.videoItem,
+        { width: itemWidthCreator, margin: spacing / 2 },
+      ]}
+    >
+      <Image source={{ uri: item.uri }} style={styles.thumbnail} />
+    </TouchableOpacity>
+  );
+
+  // Block UI until token is checked (prevents flicker)
+  if (!tokenChecked) {
+    return <SafeAreaView style={[styles.container]} />;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
