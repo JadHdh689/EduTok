@@ -7,14 +7,16 @@ import {
   Text,  
   TouchableOpacity,  
   TextInput,  
-  ScrollView
+  ScrollView,
+  Alert
 } from 'react-native';
 import { colors, fonts, shadowIntensity } from '../src/constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Fontisto from '@expo/vector-icons/Fontisto';
-import { user } from '../src/mockData';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 function EditProfile() {
   const { height, width } = useWindowDimensions();
@@ -23,10 +25,9 @@ function EditProfile() {
   // -----------------------
   // States
   // -----------------------
-  const [userRole] = useState(user);
-  const [bio, setBio] = useState("bio");
+  const [bio, setBio] = useState("");
   const [areasOfInterest, setAreasOfInterest] = useState([]);
-  const [userName, setUserName] = useState("Jane Joe");
+  const [userName, setUserName] = useState("");
   const [isInterestVisible, setIsInterestVisible] = useState(false);
 
   // -----------------------
@@ -67,125 +68,144 @@ function EditProfile() {
   };
 
   // -----------------------
+  // Save Profile Handler
+  // -----------------------
+  const handleSave = async () => {
+    if (areasOfInterest.length === 0) {
+      Alert.alert('Validation Error', 'Please select at least one area of interest');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert("Error", "No authentication token found. Please login again.");
+        return;
+      }
+
+      await axios.put(
+        "http://localhost:5000/api/auth/profile", // ⚠️ Change to your backend base URL
+        {
+          name: userName,
+          bio,
+          preferences: areasOfInterest,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      Alert.alert("Success", "Profile updated successfully!");
+      router.push('/profile');
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Failed to update profile");
+    }
+  };
+
+  // -----------------------
   // Render
   // -----------------------
   return (
     <SafeAreaView style={styles.container}>
      
-        {/* Header */}
-        <View style={[styles.profileHeader, { height: height * 0.35 }]}>
-          <View style={styles.headerBar}>
-            <Ionicons 
-              name="caret-back-outline" 
-              onPress={() => router.push('/profile')} 
-              size={24} 
-              style={styles.Icon} 
-            />
-            <Text style={styles.headerText} onPress={() => router.push('/profile')}>
-              Edit
-            </Text>
-          </View>
-
-          <View style={styles.verticalLine} />
-
-          <View style={styles.profileInfoContainer}>
-            <Text style={styles.profileInfoText}>following:</Text>
-            {userRole === "creator" && <Text style={styles.profileInfoText}>followers:</Text>}
-            <Text style={styles.profileInfoText}>Current interests:</Text>
-            <Text style={styles.profileInfoText}>Short bio</Text>
-          </View>
-        </View>
-
-        {/* Areas of Interest Popup */}
-        {isInterestVisible && (
-          <>
-            <TouchableWithoutFeedback onPress={() => setIsInterestVisible(false)}>
-              <View style={styles.backdrop} />
-            </TouchableWithoutFeedback>
-
-            <View style={[shadowIntensity.bottomShadow, styles.areaOfInterest]}>
-              <Text style={styles.popupTitle}>Choose all that apply</Text>
-              <ScrollView 
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollViewContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <CheckBox
-                  options={[
-                    { label: "Math", value: "math" },
-                    { label: "CS", value: "CS" },
-                    { label: "Language", value: "language" },
-                    { label: "Biology", value: "Biology" },
-                    { label: "History", value: "History" },
-                  ]}
-                  checkedValues={areasOfInterest}
-                  onChange={setAreasOfInterest}
-                />
-              </ScrollView>
-            </View>
-          </>
-        )}
-
-        {/* Name Input */}
-        <View style={styles.subContainer}>
-          <Text style={styles.title}>Name</Text>
-          <TextInput
-            placeholder={userName}
-            placeholderTextColor="grey"
-            style={styles.textInput}
-            onChangeText={setUserName}
+      {/* Header */}
+      <View style={[styles.profileHeader, { height: height * 0.35 }]}>
+        <View style={styles.headerBar}>
+          <Ionicons 
+            name="caret-back-outline" 
+            onPress={() => router.push('/profile')} 
+            size={24} 
+            style={styles.Icon} 
           />
+          <Text style={styles.headerText} onPress={() => router.push('/profile')}>
+            Edit
+          </Text>
         </View>
 
-        {/* Bio Input */}
-        <View style={styles.subContainer}>
-          <Text style={styles.title}>Bio</Text>
-          <TextInput
-            placeholder="Tell us about yourself"
-            placeholderTextColor="grey"
-            style={styles.textInput}
-            onChangeText={setBio}
-          />
+        <View style={styles.verticalLine} />
+
+        <View style={styles.profileInfoContainer}>
+          <Text style={styles.profileInfoText}>following:</Text>
+          <Text style={styles.profileInfoText}>followers:</Text>
+          <Text style={styles.profileInfoText}>Current interests:</Text>
+          <Text style={styles.profileInfoText}>Short bio</Text>
         </View>
+      </View>
 
-        {/* Areas of Interest Display */}
-        <View style={styles.subContainer}>
-          <Text style={styles.title}>Areas of interest:</Text>
-          {areasOfInterest.map((item) => (
-            <Text key={item} style={styles.interestItem}>{"- " + item}</Text>
-          ))}
-          <TouchableOpacity style={styles.editInterestBtn} onPress={() => setIsInterestVisible(true)}>
-            <Text style={styles.title}>edit interests</Text>
-          </TouchableOpacity>
-        </View>
+      {/* Areas of Interest Popup */}
+      {isInterestVisible && (
+        <>
+          <TouchableWithoutFeedback onPress={() => setIsInterestVisible(false)}>
+            <View style={styles.backdrop} />
+          </TouchableWithoutFeedback>
 
-        {/* Become Creator Button */}
-        {user === "Learner" && (
-          <TouchableOpacity>
-            <View style={[styles.becomeCreatorButton, { width: width * 0.5 }]}>
-              <Text style={[styles.title, { padding: 10 }]}>become a creator</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        {/* Save Changes */}
-        <TouchableOpacity
-          onPress={() => {
-            if (areasOfInterest.length === 0) {
-              alert('Please select at least one area of interest');
-            } else {
-              console.log("userName:", userName);
-              console.log("Bio:", bio);
-              console.log("subjects:", areasOfInterest);
-            }
-          }}
-        >
-          <View style={[styles.submitButton, { width: width * 0.9 }]}>
-            <Text style={[styles.title, { padding: 10, color: colors.secondary }]}>
-              save changes
-            </Text>
+          <View style={[shadowIntensity.bottomShadow, styles.areaOfInterest]}>
+            <Text style={styles.popupTitle}>Choose all that apply</Text>
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollViewContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <CheckBox
+                options={[
+                  { label: "Math", value: "math" },
+                  { label: "CS", value: "CS" },
+                  { label: "Language", value: "language" },
+                  { label: "Biology", value: "Biology" },
+                  { label: "History", value: "History" },
+                ]}
+                checkedValues={areasOfInterest}
+                onChange={setAreasOfInterest}
+              />
+            </ScrollView>
           </View>
+        </>
+      )}
+
+      {/* Name Input */}
+      <View style={styles.subContainer}>
+        <Text style={styles.title}>Name</Text>
+        <TextInput
+          placeholder="Enter your name"
+          placeholderTextColor="grey"
+          style={styles.textInput}
+          value={userName}
+          onChangeText={setUserName}
+        />
+      </View>
+
+      {/* Bio Input */}
+      <View style={styles.subContainer}>
+        <Text style={styles.title}>Bio</Text>
+        <TextInput
+          placeholder="Tell us about yourself"
+          placeholderTextColor="grey"
+          style={styles.textInput}
+          value={bio}
+          onChangeText={setBio}
+        />
+      </View>
+
+      {/* Areas of Interest Display */}
+      <View style={styles.subContainer}>
+        <Text style={styles.title}>Areas of interest:</Text>
+        {areasOfInterest.map((item) => (
+          <Text key={item} style={styles.interestItem}>{"- " + item}</Text>
+        ))}
+        <TouchableOpacity style={styles.editInterestBtn} onPress={() => setIsInterestVisible(true)}>
+          <Text style={styles.title}>edit interests</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Save Changes */}
+      <TouchableOpacity onPress={handleSave}>
+        <View style={[styles.submitButton, { width: width * 0.9 }]}>
+          <Text style={[styles.title, { padding: 10, color: colors.secondary }]}>
+            save changes
+          </Text>
+        </View>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -201,7 +221,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.iconColor,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
-  
   },
   headerBar: {
     width: '100%',
@@ -224,7 +243,6 @@ const styles = StyleSheet.create({
   profileInfoContainer: {
     position: 'absolute',
     flexDirection: 'column',
-    alignSelf: 'flex-start',
     justifyContent: "center",
     transform: [{ translateY: -100 }],
     left: '45%',
@@ -232,7 +250,8 @@ const styles = StyleSheet.create({
     alignSelf:"flex-end"
   },
   profileInfoText: { 
-       color: colors.secondary, fontFamily: fonts.initial, fontSize: 11, paddingTop: 7, paddingLeft: 20 },
+    color: colors.secondary, fontFamily: fonts.initial, fontSize: 11, paddingTop: 7, paddingLeft: 20 
+  },
 
   // Text Inputs
   textInput: {
@@ -249,15 +268,6 @@ const styles = StyleSheet.create({
   subContainer: { marginHorizontal: 20, marginTop: 20, alignItems: "flex-start" },
 
   // Buttons
-  becomeCreatorButton: {
-    borderRadius: 11,
-    backgroundColor: colors.secondary,
-    alignItems: "center",
-    alignSelf: "flex-start",
-    marginHorizontal: 20,
-    padding: 3,
-    marginTop: 4,
-  },
   submitButton: {
     borderRadius: 18,
     backgroundColor: colors.iconColor,
