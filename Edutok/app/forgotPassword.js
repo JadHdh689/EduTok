@@ -2,10 +2,10 @@ import { useState } from "react";
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import CONFIG from "../config";
+import { API_URL } from "../config"; // ✅ use centralized config
 
 function ForgotPassword() {
-  const [step, setStep] = useState(1); // step 1: enter email, step 2: enter OTP + new password
+  const [step, setStep] = useState(1); // 1: enter email, 2: enter OTP + new password
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -17,18 +17,25 @@ function ForgotPassword() {
     if (!email) return Alert.alert("Error", "Please enter your email");
     try {
       setIsLoading(true);
-      const res = await fetch(`${CONFIG.API_URL}/auth/forgot-password`, {
+      const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: "Unexpected server response" };
+      }
+
       setIsLoading(false);
 
       if (!res.ok) return Alert.alert("Error", data.error || "Failed to send code");
       Alert.alert("Success", "A reset code has been sent to your email");
       setStep(2);
-    } catch (err) {
+    } catch {
       setIsLoading(false);
       Alert.alert("Error", "Network error. Please try again.");
     }
@@ -39,18 +46,25 @@ function ForgotPassword() {
     if (!otp || !newPassword) return Alert.alert("Error", "Fill all fields");
     try {
       setIsLoading(true);
-      const res = await fetch(`${CONFIG.API_URL}/auth/reset-password`, {
+      const res = await fetch(`${API_URL}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp, newPassword }),
       });
-      const data = await res.json();
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: "Unexpected server response" };
+      }
+
       setIsLoading(false);
 
       if (!res.ok) return Alert.alert("Error", data.error || "Reset failed");
       Alert.alert("Success", "Password reset successful. Please log in.");
       router.replace("/login");
-    } catch (err) {
+    } catch {
       setIsLoading(false);
       Alert.alert("Error", "Network error. Please try again.");
     }
@@ -70,8 +84,14 @@ function ForgotPassword() {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <TouchableOpacity style={styles.button} onPress={handleSendCode} disabled={isLoading}>
-              <Text style={styles.buttonText}>{isLoading ? "Sending..." : "Send Code"}</Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleSendCode}
+              disabled={isLoading}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? "Sending..." : "Send Code"}
+              </Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -91,8 +111,14 @@ function ForgotPassword() {
               value={newPassword}
               onChangeText={setNewPassword}
             />
-            <TouchableOpacity style={styles.button} onPress={handleResetPassword} disabled={isLoading}>
-              <Text style={styles.buttonText}>{isLoading ? "Resetting..." : "Reset Password"}</Text>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleResetPassword}
+              disabled={isLoading}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? "Resetting..." : "Reset Password"}
+              </Text>
             </TouchableOpacity>
           </>
         )}
