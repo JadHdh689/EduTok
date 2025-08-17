@@ -2,6 +2,7 @@ import { useWindowDimensions, StyleSheet, View, Text, TextInput, TouchableOpacit
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Constants
 import { colors, fonts, shadowIntensity } from '../src/constants';
@@ -22,20 +23,38 @@ function Login() {
 
     // Login Handler
     const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
-            return;
-        }
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+    try {
+      setIsLoading(true);
 
-        setIsLoading(true);
-        
-        // TODO: Replace with actual authentication API call
-        setTimeout(() => {
-            setIsLoading(false);
-            // Simulate successful login
-            router.replace('/profile');
-        }, 1000);
-    };
+      const res = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/auth/login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        }
+      );
+      const data = await res.json();
+      setIsLoading(false);
+
+      if (!res.ok) {
+        Alert.alert('Error', data.error || 'Login failed');
+        return;
+      }
+
+      // SUCCESS: save token then navigate
+      await AsyncStorage.setItem('auth_token', data.token);
+      router.replace('/profile');
+
+    } catch (e) {
+      setIsLoading(false);
+      Alert.alert('Error', 'Network error. Try again.');
+    }
+  };
 
     return (
         <SafeAreaView style={styles.container}>
