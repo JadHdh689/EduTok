@@ -19,6 +19,10 @@ app.use(express.json());
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
+// before routes
+const cors = require('cors');
+app.use(cors({ origin: true, credentials: true }));
+
 // Test route
 app.get('/', (req, res) => {
   res.send('🎓 Welcome to EduTok Backend');
