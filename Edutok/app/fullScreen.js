@@ -6,6 +6,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 // Components
 import Footer from '../src/components/footer';
 import Report from '../src/components/Report';
+import Comments from './comments'; // Import the Comments component
 
 // Constants
 import { colors, fonts, maxCharacters, getDifficultyBadgeStyle } from '../src/constants';
@@ -23,6 +24,7 @@ function FullScreen() {
     // State Management
     const [fypState, setFypState] = useState("General");
     const [videos, setVideos] = useState(GeneralRetrivedVids); // TODO: Replace with API fetched data
+    const [isCommentsVisible, setIsCommentsVisible] = useState(false); // State for comments visibility
 
     // Navigation
     const router = useRouter();
@@ -178,7 +180,7 @@ function FullScreen() {
                         {/* Comment Button */}
                         <TouchableOpacity
                             style={styles.actionButton}
-                            onPress={() => router.push('/comments')}
+                            onPress={() => setIsCommentsVisible(true)} // Updated to open comments modal
                         >
                             <MaterialCommunityIcons
                                 name="comment-outline"
@@ -283,6 +285,12 @@ function FullScreen() {
 
             {/* Footer */}
             <Footer />
+            
+            {/* Comments Modal */}
+            <Comments
+                visible={isCommentsVisible}
+                onClose={() => setIsCommentsVisible(false)}
+            />
         </SafeAreaView>
     );
 }

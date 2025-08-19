@@ -11,32 +11,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AntDesign from '@expo/vector-icons/AntDesign';
 
-// Mock Reply Data
-const mockReplies = [
-    {
-        id: '1',
-        user: 'OriginalCommenter',
-        comment: 'This is exactly what I needed! Great explanation of the concepts.',
-        timestamp: '2h ago',
-        likes: 12,
-        isOriginal: true,
-    },
-    {
-        id: '2',
-        user: 'VideoCreator',
-        comment: 'Thanks for the feedback! I\'m glad it helped you understand the concepts better.',
-        timestamp: '1h ago',
-        likes: 8,
-        isCreator: true,
-    },
-    {
-        id: '3',
-        user: 'AnotherViewer',
-        comment: 'I agree! This tutorial saved me hours of research.',
-        timestamp: '45m ago',
-        likes: 5,
-    },
-];
+// Mock Reply Data - Import from mockData.js
+import { mockReplies } from '../src/mockData';
 
 function Reply() {
     const { width, height } = useWindowDimensions();
