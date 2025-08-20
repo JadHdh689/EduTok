@@ -18,67 +18,79 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+const handleLogin = async () => {
+  if (!email || !password) {
+    Alert.alert("Error", "Please fill in all fields");
+    return;
+  }
 
-    const emailNormalized = email.trim().toLowerCase();
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
-    if (!emailOk) {
-      Alert.alert('Error', 'Enter a valid email address');
-      return;
-    }
+  const emailNormalized = email.trim().toLowerCase();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
+  if (!emailOk) {
+    Alert.alert("Error", "Enter a valid email address");
+    return;
+  }
 
+  try {
+    setIsLoading(true);
+
+    const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: emailNormalized, password }),
+    });
+
+    let data = null;
     try {
-      setIsLoading(true);
-
-      const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: emailNormalized, password }),
-      });
-
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {
-        data = { error: 'Unexpected server response' };
-      }
-
-      if (!res.ok) {
-        setIsLoading(false);
-        Alert.alert('Error', data?.error || 'Login failed');
-        return;
-      }
-
-      await AsyncStorage.setItem('auth_token', data.token);
-
-      let userInfo = data.user || null;
-      try {
-        const meRes = await fetch(`${CONFIG.API_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${data.token}` },
-        });
-        if (meRes.ok) {
-          userInfo = await meRes.json();
-        }
-      } catch (err) {
-        console.log('Error fetching /auth/me:', err);
-      }
-
-      if (userInfo) {
-        await AsyncStorage.setItem('user_info', JSON.stringify(userInfo));
-      }
-
-      setIsLoading(false);
-      Alert.alert('Success', 'Login successful');
-      router.replace('/profile');
-    } catch (err) {
-      setIsLoading(false);
-      Alert.alert('Error', 'Network error. Try again.');
+      data = await res.json();
+    } catch {
+      data = { error: "Unexpected server response" };
     }
-  };
+
+    setIsLoading(false);
+
+    if (!res.ok) {
+      // ✅ Handle not-verified error explicitly
+      if (data?.error?.toLowerCase().includes("verify")) {
+        Alert.alert("Email Not Verified", "Please check your inbox for the OTP.");
+        router.replace({ pathname: "/verify", params: { email: emailNormalized } });
+      } else {
+        Alert.alert("Error", data?.error || "Login failed");
+      }
+      return;
+    }
+
+    // ✅ Save token
+    await AsyncStorage.setItem("auth_token", data.token);
+
+    // ✅ Save user info
+    let userInfo = data.user || null;
+    try {
+      const meRes = await fetch(`${CONFIG.API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+      });
+      if (meRes.ok) {
+        userInfo = await meRes.json();
+      }
+    } catch (err) {
+      console.log("Error fetching /auth/me:", err);
+    }
+
+    if (userInfo) {
+      await AsyncStorage.setItem("user_info", JSON.stringify(userInfo));
+    }
+
+    Alert.alert("Success", "Login successful");
+
+    // ✅ Take user to home/profile
+    router.replace("/profile"); // or "/home" if you have that page
+
+  } catch (err) {
+    setIsLoading(false);
+    Alert.alert("Error", "Network error. Try again.");
+  }
+};
+
 
   return (
     <SafeAreaView style={styles.container}>

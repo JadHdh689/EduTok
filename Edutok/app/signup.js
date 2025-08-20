@@ -32,17 +32,17 @@ function SignUp() {
 const handleSignUp = async () => {
   // Basic validation
   if (!name.trim() || !email.trim() || !password || !confirmPassword) {
-    Alert.alert('Error', 'Please fill in all fields');
+    Alert.alert("Error", "Please fill in all fields");
     return;
   }
 
   if (password.length < 6) {
-    Alert.alert('Error', 'Password must be at least 6 characters');
+    Alert.alert("Error", "Password must be at least 6 characters");
     return;
   }
 
   if (password !== confirmPassword) {
-    Alert.alert('Error', 'Passwords do not match');
+    Alert.alert("Error", "Passwords do not match");
     return;
   }
 
@@ -50,66 +50,52 @@ const handleSignUp = async () => {
   const nameTrimmed = name.trim();
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
   if (!emailOk) {
-    Alert.alert('Error', 'Enter a valid email address');
+    Alert.alert("Error", "Enter a valid email address");
     return;
   }
 
   try {
     setIsLoading(true);
 
-    const res = await fetch(`${API_URL}/api/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch(`${CONFIG.API_URL}/api/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: nameTrimmed,
         email: emailNormalized,
         password,
         preferences: [],
-        role: userType === 'creator' ? 'creator' : 'learner'
-      })
+        role: userType === "creator" ? "creator" : "learner",
+      }),
     });
 
     let data = null;
     try {
       data = await res.json();
     } catch {
-      data = { error: 'Unexpected server response' };
+      data = { error: "Unexpected server response" };
     }
 
+    setIsLoading(false);
+
     if (!res.ok) {
-      setIsLoading(false);
-      Alert.alert('Error', data?.error || 'Signup failed');
+      Alert.alert("Error", data?.error || "Signup failed");
       return;
     }
 
-    // Store token
-    await AsyncStorage.setItem('auth_token', data.token);
+    // ✅ No token yet → wait for verification
+    Alert.alert(
+      "Verify Your Email",
+      "We sent you a 6-digit OTP. Please check your inbox."
+    );
 
-    // Fetch user info
-    let userInfo = data.user || null;
-    try {
-      const meRes = await fetch(`${API_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${data.token}` },
-      });
-      if (meRes.ok) {
-        userInfo = await meRes.json();
-      }
-    } catch (err) {
-      console.log('Error fetching /auth/me:', err);
-    }
-
-    if (userInfo) {
-      await AsyncStorage.setItem('user_info', JSON.stringify(userInfo));
-    }
-
-    setIsLoading(false);
-    Alert.alert('Success', 'Account created successfully');
-    router.replace('/profile');
+    // ✅ Move user to verification page with email pre-filled
+    router.replace({ pathname: "/verify", params: { email: emailNormalized } });
 
   } catch (error) {
-    console.log('Signup error:', error);
+    console.log("Signup error:", error);
     setIsLoading(false);
-    Alert.alert('Error', 'Network error. Try again.');
+    Alert.alert("Error", "Network error. Try again.");
   }
 };
 

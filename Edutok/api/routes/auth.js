@@ -19,7 +19,7 @@ router.post('/signup', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 12);
 
     const otp = crypto.randomInt(100000, 999999).toString();
-    const otp_expires_at = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+    const otp_expires_at = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
     const user = await User.create({
       name,
@@ -67,6 +67,40 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+// -------------------- RESEND OTP --------------------
+router.post('/send-otp', async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ error: 'User not found' });
+    }
+    if (user.is_verified) {
+      return res.status(400).json({ error: 'Account already verified' });
+    }
+
+    // Generate a new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    user.otp_code = otp;
+    user.otp_expires_at = expiresAt;
+    await user.save();
+
+    await sendEmail(
+      user.email,
+      `Your new EduTok verification code is: ${otp}`
+    );
+
+    res.json({ message: 'A new code has been sent to your email' });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to resend code' });
+  }
+});
+
 // -------------------- LOGIN --------------------
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -109,22 +143,36 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// -------------------- EDIT PROFILE --------------------
-router.put('/profile', authMiddleware, async (req, res) => {
-  const { name, bio, preferences } = req.body;
-
+// -------------------- GET PROFILE --------------------
+router.get("/profile", authMiddleware, async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { name, bio, preferences },
-      { new: true }
-    ).select('-password_hash -otp_code -otp_expires_at');
+    const user = await User.findById(req.user.id).select("-password_hash -otp_code -otp_expires_at");
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     res.json(user);
-
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Profile update failed' });
+    console.error("Get profile error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// -------------------- UPDATE PROFILE --------------------
+router.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const { name, bio, preferences } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { name, bio, preferences },
+      { new: true, runValidators: true }
+    ).select("-password_hash -otp_code -otp_expires_at");
+
+    if (!updatedUser) return res.status(404).json({ error: "User not found" });
+
+    res.json(updatedUser);
+  } catch (err) {
+    console.error("Update profile error:", err.message);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -178,51 +226,15 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
-// ✅ Return logged-in user info
-router.get('/me', verifyToken, async (req, res) => {
+// -------------------- CURRENT USER (/me) --------------------
+router.get('/me', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password'); 
+    const user = await User.findById(req.user.id).select('-password_hash -otp_code -otp_expires_at');
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ user });
   } catch (err) {
+    console.error("Get me error:", err.message);
     res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// -------------------------
-// GET profile
-// -------------------------
-router.get("/profile", authMiddleware, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select("-password"); 
-    if (!user) return res.status(404).json({ error: "User not found" });
-
-    res.json(user);
-  } catch (err) {
-    console.error("Get profile error:", err.message);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// -------------------------
-// UPDATE profile
-// -------------------------
-router.put("/profile", authMiddleware, async (req, res) => {
-  try {
-    const { name, bio, preferences } = req.body;
-
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user.id,
-      { name, bio, preferences },
-      { new: true, runValidators: true }
-    ).select("-password");
-
-    if (!updatedUser) return res.status(404).json({ error: "User not found" });
-
-    res.json(updatedUser);
-  } catch (err) {
-    console.error("Update profile error:", err.message);
-    res.status(500).json({ error: "Server error" });
   }
 });
 
