@@ -18,9 +18,6 @@ app.use(cors({ origin: true, credentials: true }));
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
-const profileRoutes = require('./routes/profile'); // ✅ add profile routes
-app.use('/api/profile', profileRoutes);
-
 const videoRoutes = require('./routes/videos'); // ✅ add videos routes
 app.use('/api/videos', videoRoutes);
 
