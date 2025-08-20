@@ -34,7 +34,8 @@ router.post('/signup', async (req, res) => {
     res.status(201).json({ message: 'OTP sent to email' });
 
   } catch (err) {
-    res.status(500).json({ error: 'Signup failed' });
+    console.error(err);
+    res.status(500).json({ error: 'Signup failed. Please try again.' });
   }
 });
 
@@ -61,7 +62,8 @@ router.post('/verify-otp', async (req, res) => {
     res.status(200).json({ message: 'Account verified successfully' });
 
   } catch (err) {
-    res.status(500).json({ error: 'Verification failed' });
+    console.error(err);
+    res.status(500).json({ error: 'Verification failed. Please try again.' });
   }
 });
 
@@ -80,10 +82,13 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) return res.status(400).json({ error: 'Invalid email or password' });
 
+    const expiresInEnv = process.env.JWT_EXPIRES_IN;
+    const expiresIn = /^\d+$/.test(expiresInEnv) ? parseInt(expiresInEnv) : (expiresInEnv || '7d');
+
     const token = jwt.sign(
       { user_id: user._id, role: user.role, is_admin: user.is_admin },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { expiresIn }
     );
 
     res.status(200).json({
@@ -99,7 +104,8 @@ router.post('/login', async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ error: 'Login failed' });
+    console.error(err);
+    res.status(500).json({ error: 'Login failed. Please try again.' });
   }
 });
 
@@ -112,11 +118,12 @@ router.put('/profile', authMiddleware, async (req, res) => {
       req.user.id,
       { name, bio, preferences },
       { new: true }
-    ).select('-password_hash -otp_code -otp_expires_at'); // don’t send sensitive fields
+    ).select('-password_hash -otp_code -otp_expires_at');
 
     res.json(user);
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Profile update failed' });
   }
 });
@@ -141,7 +148,8 @@ router.post('/forgot-password', async (req, res) => {
     res.json({ message: 'Reset code sent to your email' });
 
   } catch (err) {
-    res.status(500).json({ error: 'Forgot password failed' });
+    console.error(err);
+    res.status(500).json({ error: 'Forgot password failed. Please try again.' });
   }
 });
 
@@ -153,7 +161,7 @@ router.post('/reset-password', async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: 'User not found' });
 
-    if (user.otp_code !== otp || Date.now() > user.otp_expires_at) {
+    if (user.otp_code !== otp || Date.now() > new Date(user.otp_expires_at)) {
       return res.status(400).json({ error: 'Invalid or expired code' });
     }
 
@@ -165,7 +173,8 @@ router.post('/reset-password', async (req, res) => {
     res.json({ message: 'Password reset successful' });
 
   } catch (err) {
-    res.status(500).json({ error: 'Reset password failed' });
+    console.error(err);
+    res.status(500).json({ error: 'Reset password failed. Please try again.' });
   }
 });
 
