@@ -1,20 +1,25 @@
 const nodemailer = require('nodemailer');
 
-const sendEmail = async (to, message) => {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,     // your Gmail address
-      pass: process.env.EMAIL_PASS      // app-specific password (not your Gmail password)
-    }
-  });
+const sendEmail = async (to, message, subject = 'EduTok Notification') => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
 
-  await transporter.sendMail({
-    from: `"EduTok" <${process.env.EMAIL_USER}>`,
-    to,
-    subject: 'EduTok Email Verification',
-    text: message
-  });
+    await transporter.sendMail({
+      from: `"EduTok" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      text: message
+    });
+  } catch (err) {
+    console.error('Email send error:', err);
+    throw new Error('Failed to send email');
+  }
 };
 
 module.exports = sendEmail;
