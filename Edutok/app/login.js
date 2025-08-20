@@ -34,7 +34,7 @@ function Login() {
     try {
       setIsLoading(true);
 
-      const res = await fetch(`${CONFIG.API_URL}/auth/login`, {
+      const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailNormalized, password }),
@@ -57,7 +57,7 @@ function Login() {
 
       let userInfo = data.user || null;
       try {
-        const meRes = await fetch(`${CONFIG.API_URL}/auth/me`, {
+        const meRes = await fetch(`${CONFIG.API_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${data.token}` },
         });
         if (meRes.ok) {
