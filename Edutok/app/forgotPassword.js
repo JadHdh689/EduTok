@@ -2,13 +2,14 @@ import { useState } from "react";
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { API_URL } from "../config"; // ✅ use centralized config
+import { API_URL } from "../config";
 
 function ForgotPassword() {
-  const [step, setStep] = useState(1); // 1: enter email, 2: enter OTP + new password
+  const [step, setStep] = useState(1); // 1: send email, 2: reset password
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -43,7 +44,18 @@ function ForgotPassword() {
 
   // Step 2 → Reset password with OTP
   const handleResetPassword = async () => {
-    if (!otp || !newPassword) return Alert.alert("Error", "Fill all fields");
+    if (!otp || !newPassword || !confirmPassword)
+      return Alert.alert("Error", "Fill all fields");
+
+    if (otp.length !== 6) 
+      return Alert.alert("Error", "OTP must be 6 digits");
+
+    if (newPassword.length < 6) 
+      return Alert.alert("Error", "Password must be at least 6 characters");
+
+    if (newPassword !== confirmPassword) 
+      return Alert.alert("Error", "Passwords do not match");
+
     try {
       setIsLoading(true);
       const res = await fetch(`${API_URL}/api/auth/reset-password`, {
@@ -99,10 +111,11 @@ function ForgotPassword() {
             <Text style={styles.title}>Reset Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter OTP code"
+              placeholder="Enter 6-digit OTP"
               value={otp}
               onChangeText={setOtp}
-              keyboardType="numeric"
+              maxLength={6}
+              keyboardType="number-pad"
             />
             <TextInput
               style={styles.input}
@@ -110,6 +123,13 @@ function ForgotPassword() {
               secureTextEntry
               value={newPassword}
               onChangeText={setNewPassword}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm new password"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
             />
             <TouchableOpacity
               style={styles.button}
