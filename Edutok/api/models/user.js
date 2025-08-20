@@ -2,9 +2,6 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
 
-  reset_password_token: String,
-  reset_password_expires: Date,
-
   name: {
     type: String,
     required: true,
