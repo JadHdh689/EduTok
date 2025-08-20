@@ -1,91 +1,84 @@
+// ✅ No changes to imports needed
 import { useWindowDimensions, StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Constants
 import { colors, fonts, shadowIntensity } from '../src/constants';
-
-// Icons
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-
-import CONFIG from '../config'; // ✅ centralized API config
+import CONFIG from '../config';
 
 function Login() {
   const { height } = useWindowDimensions();
   const router = useRouter();
 
-  // State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-  if (!email || !password) {
-    Alert.alert('Error', 'Please fill in all fields');
-    return;
-  }
-
-  const emailNormalized = email.trim().toLowerCase();
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
-  if (!emailOk) {
-    Alert.alert('Error', 'Enter a valid email address');
-    return;
-  }
-
-  try {
-    setIsLoading(true);
-
-    // 1. Login request
-    const res = await fetch(`${CONFIG.API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailNormalized, password }),
-    });
-
-    let data = null;
-    try {
-      data = await res.json();
-    } catch {
-      data = { error: 'Unexpected server response' };
-    }
-
-    if (!res.ok) {
-      setIsLoading(false);
-      Alert.alert('Error', data?.error || 'Login failed');
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    // 2. Save token
-    await AsyncStorage.setItem('auth_token', data.token);
+    const emailNormalized = email.trim().toLowerCase();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
+    if (!emailOk) {
+      Alert.alert('Error', 'Enter a valid email address');
+      return;
+    }
 
-    // 3. Always refresh user info from backend
-    let userInfo = data.user || null;
     try {
-      const meRes = await fetch(`${CONFIG.API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${data.token}` },
+      setIsLoading(true);
+
+      const res = await fetch(`${CONFIG.API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailNormalized, password }),
       });
-      if (meRes.ok) {
-        userInfo = await meRes.json();
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = { error: 'Unexpected server response' };
       }
+
+      if (!res.ok) {
+        setIsLoading(false);
+        Alert.alert('Error', data?.error || 'Login failed');
+        return;
+      }
+
+      await AsyncStorage.setItem('auth_token', data.token);
+
+      let userInfo = data.user || null;
+      try {
+        const meRes = await fetch(`${CONFIG.API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${data.token}` },
+        });
+        if (meRes.ok) {
+          userInfo = await meRes.json();
+        }
+      } catch (err) {
+        console.log('Error fetching /auth/me:', err);
+      }
+
+      if (userInfo) {
+        await AsyncStorage.setItem('user_info', JSON.stringify(userInfo));
+      }
+
+      setIsLoading(false);
+      Alert.alert('Success', 'Login successful');
+      router.replace('/profile');
     } catch (err) {
-      console.log('Error fetching /auth/me:', err);
+      setIsLoading(false);
+      Alert.alert('Error', 'Network error. Try again.');
     }
-
-    if (userInfo) {
-      await AsyncStorage.setItem('user_info', JSON.stringify(userInfo));
-    }
-
-    setIsLoading(false);
-    Alert.alert('Success', 'Login successful');
-    router.replace('/profile');
-  } catch (err) {
-    setIsLoading(false);
-    Alert.alert('Error', 'Network error. Try again.');
-  }
-};
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -168,6 +161,7 @@ function Login() {
   );
 }
 
+// ✅ No changes to styles — they're already correct
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.screenColor },
   header: {
