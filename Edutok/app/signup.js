@@ -28,87 +28,90 @@ function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sign Up
-  const handleSignUp = async () => {
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
+// Sign Up
+const handleSignUp = async () => {
+  // Basic validation
+  if (!name.trim() || !email.trim() || !password || !confirmPassword) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
 
-    const emailNormalized = email.trim().toLowerCase();
-    const nameTrimmed = name.trim();
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
-    if (!emailOk) {
-      Alert.alert('Error', 'Enter a valid email address');
-      return;
-    }
+  if (password.length < 6) {
+    Alert.alert('Error', 'Password must be at least 6 characters');
+    return;
+  }
 
+  if (password !== confirmPassword) {
+    Alert.alert('Error', 'Passwords do not match');
+    return;
+  }
+
+  const emailNormalized = email.trim().toLowerCase();
+  const nameTrimmed = name.trim();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
+  if (!emailOk) {
+    Alert.alert('Error', 'Enter a valid email address');
+    return;
+  }
+
+  try {
+    setIsLoading(true);
+
+    const res = await fetch(`${API_URL}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: nameTrimmed,
+        email: emailNormalized,
+        password,
+        preferences: [],
+        role: userType === 'creator' ? 'creator' : 'learner'
+      })
+    });
+
+    let data = null;
     try {
-      setIsLoading(true);
-
-      const res = await fetch(`${API_URL}/api/auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: nameTrimmed,
-          email: emailNormalized,
-          password,
-          preferences: [],
-          role: userType === 'creator' ? 'creator' : 'learner'
-        })
-      });
-
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {
-        data = { error: 'Unexpected server response' };
-      }
-
-      if (!res.ok) {
-        setIsLoading(false);
-        Alert.alert('Error', data?.error || 'Signup failed');
-        return;
-      }
-
-      // Store token
-      await AsyncStorage.setItem('auth_token', data.token);
-
-      // Fetch user info
-      let userInfo = data.user || null;
-      try {
-        const meRes = await fetch(`${API_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${data.token}` },
-        });
-        if (meRes.ok) {
-          userInfo = await meRes.json();
-        }
-      } catch (err) {
-        console.log('Error fetching /auth/me:', err);
-      }
-
-      if (userInfo) {
-        await AsyncStorage.setItem('user_info', JSON.stringify(userInfo));
-      }
-
-      setIsLoading(false);
-      Alert.alert('Success', 'Account created successfully');
-
-      // Navigate to profile directly
-      router.replace('/profile');
+      data = await res.json();
     } catch {
-      setIsLoading(false);
-      Alert.alert('Error', 'Network error. Try again.');
+      data = { error: 'Unexpected server response' };
     }
-  };
+
+    if (!res.ok) {
+      setIsLoading(false);
+      Alert.alert('Error', data?.error || 'Signup failed');
+      return;
+    }
+
+    // Store token
+    await AsyncStorage.setItem('auth_token', data.token);
+
+    // Fetch user info
+    let userInfo = data.user || null;
+    try {
+      const meRes = await fetch(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+      });
+      if (meRes.ok) {
+        userInfo = await meRes.json();
+      }
+    } catch (err) {
+      console.log('Error fetching /auth/me:', err);
+    }
+
+    if (userInfo) {
+      await AsyncStorage.setItem('user_info', JSON.stringify(userInfo));
+    }
+
+    setIsLoading(false);
+    Alert.alert('Success', 'Account created successfully');
+    router.replace('/profile');
+
+  } catch (error) {
+    console.log('Signup error:', error);
+    setIsLoading(false);
+    Alert.alert('Error', 'Network error. Try again.');
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>
