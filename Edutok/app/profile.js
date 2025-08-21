@@ -19,7 +19,8 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 // Config
-import { API_URL } from '../config';
+import CONFIG from "../config";
+const API_URL = CONFIG.API_URL;
 
 function Profile() {
   const router = useRouter();

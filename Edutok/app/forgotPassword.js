@@ -2,7 +2,9 @@ import { useState } from "react";
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { API_URL } from "../config";
+import CONFIG from "../config";
+const API_URL = CONFIG.API_URL;
+
 
 function ForgotPassword() {
   const [step, setStep] = useState(1); // 1: send email, 2: reset password

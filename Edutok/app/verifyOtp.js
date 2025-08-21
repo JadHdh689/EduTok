@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { API_URL } from '../config';
+import CONFIG from "../config";
+const API_URL = CONFIG.API_URL;
 
 export default function VerifyOtp() {
   const { email } = useLocalSearchParams();

@@ -17,7 +17,9 @@ import Fontisto from '@expo/vector-icons/Fontisto';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { API_BASE_URL } from '../config';   // ✅ use centralized config
+import CONFIG from "../config"; // ✅ use centralized config
+const API_URL = CONFIG.API_URL;
+   
 
 function EditProfile() {
   const { height, width } = useWindowDimensions();
@@ -85,7 +87,7 @@ function EditProfile() {
       }
 
       await axios.put(
-        `${API_BASE_URL}/auth/profile`,   // ✅ use config base URL
+        `${API_URL}/auth/profile`,   // ✅ use config base URL
         {
           name: userName,
           bio,

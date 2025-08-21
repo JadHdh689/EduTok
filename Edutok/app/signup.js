@@ -8,7 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, fonts, shadowIntensity } from '../src/constants';
 
 // Config (API base URL)
-import { API_URL } from '../config';
+// ;;;;;;import { API_URL } from '../config';
+import CONFIG from "../config";
 
 // Icons
 import Ionicons from '@expo/vector-icons/Ionicons';
