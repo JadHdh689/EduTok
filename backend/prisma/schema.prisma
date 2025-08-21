@@ -1,0 +1,330 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql" // or "mysql"
+  url = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/* ========= Enums ========= */
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum EnrollmentStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+/* ========= Users & Follows ========= */
+model User {
+  id          String  @id @default(cuid())
+  // If you use Cognito/other IdP, store its subject here
+  authSub     String  @unique
+
+  username    String  @unique
+  displayName String
+  email       String? @unique
+  bio         String?
+  avatarUrl   String?
+  role        Role    @default(USER)
+
+  // relations
+  videos      Video[]
+  comments    VideoComment[]
+  likes       VideoLike[]
+  enrollments CourseEnrollment[]
+  sectionProgress SectionProgress[]
+  quizAttempts QuizAttempt[]
+  followsOut  Follow[] @relation("follows_out")
+  followsIn   Follow[] @relation("follows_in")
+
+  // preferences / feed
+  prefs       UserCategoryPreference[]
+  seen        UserVideoSeen[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Follow {
+  id          String @id @default(cuid())
+  followerId  String
+  followeeId  String
+  createdAt   DateTime @default(now())
+
+  follower    User   @relation("follows_out", fields: [followerId], references: [id], onDelete: Cascade)
+  followee    User   @relation("follows_in",  fields: [followeeId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followeeId])
+  @@index([followeeId])
+}
+
+/* ========= Categories ========= */
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  imageUrl    String?
+
+  videos      Video[]
+  courses     Course[]
+  prefs       UserCategoryPreference[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model UserCategoryPreference {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId Int
+  weight     Int      @default(1) // light personalization signal
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+  @@index([categoryId])
+}
+
+/* ========= Videos (≤ 90s) ========= */
+model Video {
+  id           String     @id @default(cuid())
+  authorId     String
+  categoryId   Int
+
+  title        String
+  description  String?
+  durationSec  Int        // validate <= 90 in service
+  visibility   Visibility @default(PUBLIC)
+
+  // S3 metadata
+  s3Bucket     String
+  s3Key        String
+  thumbKey     String?
+
+  // relations
+  author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  quiz         Quiz?
+  sectionUsed  Section?   // if included in a course section
+  likes        VideoLike[]
+  comments     VideoComment[]
+  seenBy       UserVideoSeen[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([categoryId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+/* ========= Likes / Comments / Seen ========= */
+model VideoLike {
+  id        String  @id @default(cuid())
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@index([videoId, createdAt])
+}
+
+model VideoComment {
+  id        String  @id @default(cuid())
+  videoId   String
+  authorId  String
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  video     Video   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  author    User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([videoId, createdAt])
+}
+
+model UserVideoSeen {
+  id        String  @id @default(cuid())
+  userId    String
+  videoId   String
+  seenAt    DateTime @default(now())
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId]) // anti-repeat on general feed
+  @@index([userId, seenAt])
+}
+
+/* ========= Quizzes (video quiz + optional course final) ========= */
+model Quiz {
+  id           String  @id @default(cuid())
+  title        String
+
+  // Exactly one of these is set:
+  videoId      String? @unique
+  courseId     String? // final exam if set
+
+  passScore    Int?    // optional pass threshold
+  questions    QuizQuestion[]
+  attempts     QuizAttempt[]
+
+  video        Video?  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  course       Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([courseId])
+}
+
+model QuizQuestion {
+  id        String @id @default(cuid())
+  quizId    String
+  order     Int
+  text      String
+
+  quiz      Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options   QuizOption[]
+
+  @@unique([quizId, order])
+}
+
+model QuizOption {
+  id         String @id @default(cuid())
+  questionId String
+  text       String
+  isCorrect  Boolean @default(false)
+
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  quizId      String
+  userId      String
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  score       Int      @default(0)
+  maxScore    Int      @default(0)
+  passed      Boolean  @default(false)
+
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers     QuizAnswer[]
+
+  @@index([userId, quizId])
+}
+
+model QuizAnswer {
+  id              String @id @default(cuid())
+  attemptId       String
+  questionId      String
+  selectedOptionId String?
+  isCorrect       Boolean @default(false)
+
+  attempt         QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question        QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption  QuizOption?  @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@unique([attemptId, questionId])
+}
+
+/* ========= Courses → Chapters → Sections ========= */
+model Course {
+  id           String   @id @default(cuid())
+  authorId     String
+  categoryId   Int
+  title        String
+  description  String?
+  coverImageUrl String?
+  published    Boolean  @default(false)
+
+  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  chapters     Chapter[]
+  enrollments  CourseEnrollment[]
+  // optional final exam Quiz: where Quiz.courseId = Course.id
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([categoryId, createdAt])
+  @@index([authorId, createdAt])
+}
+
+model Chapter {
+  id        String @id @default(cuid())
+  courseId  String
+  title     String
+  order     Int
+
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sections  Section[]
+
+  @@unique([courseId, order])
+}
+
+model Section {
+  id        String @id @default(cuid())
+  chapterId String
+  title     String
+  order     Int
+  videoId   String @unique  // 1:1 — a section uses exactly one short video
+
+  chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  video     Video   @relation(fields: [videoId], references: [id], onDelete: Restrict)
+
+  progress  SectionProgress[]
+
+  @@unique([chapterId, order])
+}
+
+model CourseEnrollment {
+  id          String           @id @default(cuid())
+  userId      String
+  courseId    String
+  status      EnrollmentStatus @default(IN_PROGRESS)
+  progressPct Int              @default(0) // compute on section completions
+  startedAt   DateTime? 
+  completedAt DateTime?
+
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+}
+
+model SectionProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  sectionId   String
+  completedAt DateTime?
+  lastAttemptId String? // optional link to the latest quiz attempt for the section's video
+  score       Int?
+  maxScore    Int?
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  section     Section     @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  lastAttempt QuizAttempt? @relation(fields: [lastAttemptId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, sectionId])
+  @@index([sectionId])
+}
