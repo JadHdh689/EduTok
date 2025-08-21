@@ -1,5 +1,30 @@
 export const user = "creator";
 
+// Enhanced User Profile Data
+export const userProfiles = {
+  creator: {
+    id: 'creator_001',
+    name: 'Sarah Chen',
+    role: 'creator',
+    profileImage: 'https://randomuser.me/api/portraits/women/44.jpg',
+    bio: 'Computer Science Professor & Tech Educator with 8+ years of experience. Passionate about making complex programming concepts accessible to everyone.',
+    subjects: ['Math', 'Programming'],
+    followers: 12450,
+    following: 89,
+  },
+  student: {
+    id: 'student_001',
+    name: 'Alex Rodriguez',
+    role: 'student',
+    profileImage: 'https://randomuser.me/api/portraits/men/32.jpg',
+    bio: 'Computer Science student passionate about learning new technologies. Currently exploring React Native and mobile app development.',
+    subjects: [ 'Programming', 'Biology'],
+    following: 234,
+  }
+};
+
+
+// Enhanced Video Data with More Details
 export const commonVideos = [
   {
     id: '1',
@@ -12,6 +37,9 @@ export const commonVideos = [
     likes: 120,
     Comments: 0,
     followed: true,
+    bio: 'Computer Science Professor & Tech Educator with 8+ years of experience. Passionate about making complex programming concepts accessible to everyone.',
+    followers: 12450,
+    following: 89,
     description: 'Learn how to build a full-stack app using React Native and Node.js with best practices.',
     questions: [
       { 
@@ -37,10 +65,14 @@ export const commonVideos = [
     uri: 'https://img.youtube.com/vi/0-S5a0eXPoc/mqdefault.jpg',
     subject: 'Programming',
     difficulty: 'easy',
-    creator: 'Bob Coder',
+    creator: 'Alice Dev',
     profile: 'https://randomuser.me/api/portraits/men/46.jpg',
     likes: 0,
     Comments: 100,
+    followed: false,
+    bio: 'Computer Science Professor & Tech Educator with 8+ years of experience. Passionate about making complex programming concepts accessible to everyone.',
+    followers: 12450,
+    following: 89,
     description: 'Getting started with Expo — the easiest way to build and deploy mobile apps using JavaScript.',
     questions: [
       { 
@@ -70,6 +102,10 @@ export const commonVideos = [
     profile: 'https://randomuser.me/api/portraits/women/68.jpg',
     likes: 500,
     Comments: 25,
+    followed: false,
+    bio: 'Certified fitness trainer and wellness coach helping people achieve their health goals through effective workouts.',
+    followers: 8900,
+    following: 156,
     description: 'Follow this 30-minute full-body workout to stay energized and healthy at home.',
     questions: [
       { 
@@ -100,7 +136,27 @@ export const commonVideos = [
     likes: 10000000,
     Comments: 10000,
     followed: true,
-    description: 'A peaceful walking tour through lush forests and scenic trails to clear your mind.'
+    bio: 'Adventure photographer and nature enthusiast sharing the beauty of the outdoors through stunning visuals and peaceful walking tours.',
+    followers: 2500000,
+    following: 45,
+    description: 'A peaceful walking tour through lush forests and scenic trails to clear your mind.',
+    questions: [
+      { 
+        question: 'What type of content is this video?', 
+        options: ['Fitness workout', 'Nature walk', 'Cooking tutorial'], 
+        answer: 'Nature walk' 
+      },
+      { 
+        question: 'What is the main purpose of this video?', 
+        options: ['Exercise', 'Relaxation', 'Education'], 
+        answer: 'Relaxation' 
+      },
+      { 
+        question: 'What environment is featured in this video?', 
+        options: ['Urban city', 'Lush forests', 'Desert landscape'], 
+        answer: 'Lush forests' 
+      }
+    ]
   },
   {
     id: '5',
@@ -112,7 +168,28 @@ export const commonVideos = [
     profile: 'https://randomuser.me/api/portraits/men/22.jpg',
     likes: 9,
     Comments: 10,
-    description: 'Master the art of Italian pasta with this detailed recipe and step-by-step cooking guide.'
+    followed: false,
+    bio: 'Professional chef and culinary instructor sharing authentic Italian recipes and cooking techniques.',
+    followers: 3200,
+    following: 78,
+    description: 'Master the art of Italian pasta with this detailed recipe and step-by-step cooking guide.',
+    questions: [
+      { 
+        question: 'What cuisine is featured in this video?', 
+        options: ['Italian', 'French', 'Asian'], 
+        answer: 'Italian' 
+      },
+      { 
+        question: 'What dish is being prepared?', 
+        options: ['Pizza', 'Pasta', 'Risotto'], 
+        answer: 'Pasta' 
+      },
+      { 
+        question: 'What is the difficulty level of this recipe?', 
+        options: ['Easy', 'Intermediate', 'Hard'], 
+        answer: 'Hard' 
+      }
+    ]
   },
   {
     id: '6',
@@ -124,7 +201,28 @@ export const commonVideos = [
     profile: 'https://randomuser.me/api/portraits/women/12.jpg',
     likes: 25000,
     Comments: 500,
-    description: 'Relax and focus with this curated playlist of calming lofi beats and ambient sounds.'
+    followed: false,
+    bio: 'Music producer and curator creating ambient sounds and lofi beats for focus and relaxation.',
+    followers: 15600,
+    following: 234,
+    description: 'Relax and focus with this curated playlist of calming lofi beats and ambient sounds.',
+    questions: [
+      { 
+        question: 'What type of music is featured?', 
+        options: ['Rock', 'Lofi', 'Classical'], 
+        answer: 'Lofi' 
+      },
+      { 
+        question: 'What is the main purpose of this music?', 
+        options: ['Dancing', 'Focus and relaxation', 'Exercise'], 
+        answer: 'Focus and relaxation' 
+      },
+      { 
+        question: 'What genre best describes this content?', 
+        options: ['Ambient', 'Electronic', 'Jazz'], 
+        answer: 'Ambient' 
+      }
+    ]
   },
   {
     id: '7',
@@ -136,7 +234,28 @@ export const commonVideos = [
     profile: 'https://randomuser.me/api/portraits/men/71.jpg',
     likes: 1200,
     Comments: 85,
-    description: 'Explore the majestic landscapes and hidden trails of Nepal in this travel vlog series.'
+    followed: false,
+    bio: 'Travel vlogger and adventure seeker exploring the world\'s most beautiful destinations and sharing authentic experiences.',
+    followers: 8900,
+    following: 189,
+    description: 'Explore the majestic landscapes and hidden trails of Nepal in this travel vlog series.',
+    questions: [
+      { 
+        question: 'What country is featured in this video?', 
+        options: ['India', 'Nepal', 'Tibet'], 
+        answer: 'Nepal' 
+      },
+      { 
+        question: 'What type of travel content is this?', 
+        options: ['City tour', 'Backpacking adventure', 'Luxury travel'], 
+        answer: 'Backpacking adventure' 
+      },
+      { 
+        question: 'What landscapes are shown?', 
+        options: ['Desert', 'Mountains', 'Beach'], 
+        answer: 'Mountains' 
+      }
+    ]
   },
   {
     id: '8',
@@ -148,9 +267,43 @@ export const commonVideos = [
     profile: 'https://randomuser.me/api/portraits/men/33.jpg',
     likes: 800,
     Comments: 42,
-    description: 'Join a calm and productive coding session designed to help you stay focused and inspired.'
+    followed: false,
+    bio: 'Software developer and coding instructor creating peaceful coding environments for focused learning and development.',
+    followers: 6700,
+    following: 123,
+    description: 'Join a calm and productive coding session designed to help you stay focused and inspired.',
+    questions: [
+      { 
+        question: 'What type of coding session is this?', 
+        options: ['Fast-paced', 'Calm and productive', 'Competitive'], 
+        answer: 'Calm and productive' 
+      },
+      { 
+        question: 'What is the main goal of this stream?', 
+        options: ['Entertainment', 'Focus and inspiration', 'Speed coding'], 
+        answer: 'Focus and inspiration' 
+      },
+      { 
+        question: 'What programming concept is emphasized?', 
+        options: ['Speed', 'Productivity', 'Calm focus'], 
+        answer: 'Calm focus' 
+      }
+    ]
   }
 ];
+
+// Function to add new videos to the commonVideos array
+export const addNewVideo = (newVideo) => {
+  commonVideos.push(newVideo);
+  return commonVideos;
+};
+
+// Getter functions to always return fresh copies of the arrays
+export const getGeneralVideos = () => [...commonVideos];
+export const getFollowedVideos = () => [...commonVideos];
+export const getSavedVideos = () => [...commonVideos];
+export const getFavoriteVideos = () => [...commonVideos];
+export const getMyVideos = () => [...commonVideos];
 
 // Different video categories can reuse the same base data
 export const GeneralRetrivedVids = [...commonVideos];
