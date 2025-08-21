@@ -304,6 +304,73 @@ export const getFollowedVideos = () => [...commonVideos];
 export const getSavedVideos = () => [...commonVideos];
 export const getFavoriteVideos = () => [...commonVideos];
 export const getMyVideos = () => [...commonVideos];
+export const mockComments = [
+    {
+        id: '1',
+        user: 'TechLearner23',
+        comment: 'This is exactly what I needed! Great explanation of the concepts.',
+        timestamp: '2h ago',
+        likes: 12,
+        replies: 3, // This comment has 3 replies
+    },
+    {
+        id: '2',
+        user: 'CodeNewbie',
+        comment: 'Could you make a follow-up video about advanced topics?',
+        timestamp: '4h ago',
+        likes: 8,
+        replies: 1, // This comment has 1 reply
+    },
+    {
+        id: '3',
+        user: 'DevMaster',
+        comment: 'Really well structured tutorial. The examples were super helpful!',
+        timestamp: '6h ago',
+        likes: 25,
+        replies: 0, // This comment has no replies
+    },
+    // ... other comments
+];
+
+export const mockReplies = [
+    // Replies for comment with id '1'
+    {
+        id: 'r1',
+        user: 'VideoCreator',
+        comment: 'Thanks for the feedback! I\'m glad it helped you understand the concepts better.',
+        timestamp: '1h ago',
+        likes: 8,
+        parentCommentId: '1', // This matches comment id '1'
+        isCreator: true,
+    },
+    {
+        id: 'r2',
+        user: 'AnotherViewer',
+        comment: 'I agree! This tutorial saved me hours of research.',
+        timestamp: '45m ago',
+        likes: 5,
+        parentCommentId: '1', // This matches comment id '1'
+    },
+    {
+        id: 'r3',
+        user: 'StudyBuddy',
+        comment: 'The part about recursion was especially helpful!',
+        timestamp: '30m ago',
+        likes: 3,
+        parentCommentId: '1', // This matches comment id '1'
+    },
+    
+    // Reply for comment with id '2'
+    {
+        id: 'r4',
+        user: 'VideoCreator',
+        comment: 'Great suggestion! I\'ll add that to my content calendar.',
+        timestamp: '2h ago',
+        likes: 4,
+        parentCommentId: '2', // This matches comment id '2'
+        isCreator: true,
+    },
+];
 
 // Different video categories can reuse the same base data
 export const GeneralRetrivedVids = [...commonVideos];
