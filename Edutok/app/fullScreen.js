@@ -45,7 +45,7 @@ function FullScreen() {
     // Layout Calculations
     const { width, height } = useWindowDimensions();
     const insets = useSafeAreaInsets();
-    const numPadding = user === 'creator' ? 20 : 0;
+    const numPadding = user === 'creator' ? height*0.06: height*0.02;
 
     // Initialize videos based on navigation params and scroll to initial index
     useEffect(() => {
@@ -115,7 +115,7 @@ function FullScreen() {
         const isReportPopupVisible = isReportPopupVisibleMap[id] || false;
 
         return (
-            <SafeAreaView style={{ flex: 1, height: height }}>
+            <SafeAreaView style={{ flex: 1, height: height}}>
                 {/* Video Content */}
                 <Image
                     source={{ uri: item.uri }}
@@ -128,11 +128,17 @@ function FullScreen() {
                     {/* Left Side - Video Details */}
 
                     <View style={[styles.videoDetails, { minHeight: height * 0.15, width: width * 0.8, }]}>
-                        <View style={{ flexDirection: "row", alignContent: "flex-start" }}>   <Image
-
-                            source={{ uri: item.profile }}
-                            style={styles.profileImage}
-                        /><View>
+                        <View style={{ flexDirection: "row", alignContent: "flex-start" }}>   
+                            <TouchableOpacity onPress={() => router.push({
+                                pathname: 'creatorPage',
+                                params: { creator: item.creator, profile: item.profile, followed: item.followed,followers:item.followers,following:item.following,bio:item.bio }
+                            })}>
+                                <Image
+                                    source={{ uri: item.profile }}
+                                    style={styles.profileImage}
+                                />
+                            </TouchableOpacity>
+                            <View>
                                 <TouchableOpacity onPress={() => setFollowedMap(prev => ({ ...prev, [id]: !isFollowed }))}>
                                     <View style={styles.followButton}>
                                         <Text style={styles.followButtonText}>
@@ -400,6 +406,7 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 11,
+   
 
     },
 

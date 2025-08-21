@@ -1,7 +1,9 @@
+import React from 'react';
 import {TouchableWithoutFeedback,useWindowDimensions, StyleSheet, View, Text, Image, FlatList, TouchableOpacity} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Components
 import Footer from '../src/components/footer';
@@ -25,6 +27,30 @@ function Profile() {
     // TODO: Replace with actual user data from backend
     const [userRole, setUserRole] = useState(userProfiles.creator.role); // Will be fetched from backend
     const [userName, setUserName] = useState(userProfiles.creator.name); // Will be fetched from backend
+    const [userBio, setUserBio] = useState(userProfiles.creator.bio);
+    const[userSubjects,setUserSubjects] = useState(userProfiles.creator.subjects);
+    // Load profile data from AsyncStorage when component mounts and when focused
+    useFocusEffect(
+        React.useCallback(() => {
+                    const loadProfileData = async () => {
+            try {
+                const savedData = await AsyncStorage.getItem('userProfileData');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    console.log("Profile page loaded data:", parsedData);
+                    setUserName(parsedData.name);
+                    setUserRole(parsedData.role);
+                    setUserBio(parsedData.bio);
+                    setUserSubjects(parsedData.subjects);
+                }
+            } catch (error) {
+                console.error('Error loading profile data:', error);
+            }
+        };
+            
+            loadProfileData();
+        }, [])
+    );
 
     // Layout Calculations
     const { height, width } = useWindowDimensions();
@@ -161,7 +187,8 @@ function Profile() {
                             width: width,
                             flexDirection: 'row',
                             alignItems: 'center',
-                           flexShrink: 1, flexGrow: 1 
+                           flexShrink: 1, flexGrow: 1, 
+                           paddingVertical:3,
                            
                         }}>  
                             {userRole === "creator" ? 
@@ -265,10 +292,10 @@ function Profile() {
                                 fontSize: width * 0.03,
                                 marginBottom: height * 0.005,
                                 lineHeight: width * 0.035
-                            }]}>{userProfiles.creator.bio}</Text>
+                            }]}>{userBio}</Text>
                             
                             <View style={styles.subjectsContainer}>
-                                {userProfiles.creator.subjects.map((subject, index) => (
+                                {userSubjects.map((subject, index) => (
                                     <View key={index} style={[styles.subjectTag, {
                                         paddingHorizontal: width * 0.02,
                                         paddingVertical: height * 0.008,
@@ -294,7 +321,7 @@ function Profile() {
                                 style={[
                                     styles.filterButton,
                                     {borderBottomLeftRadius: 25},
-                                    tab === 'saved' && styles.filterButtonActive
+                                   
                                 ]}
                                 onPress={() => handleTabChange('saved')}
                             >
@@ -317,7 +344,7 @@ function Profile() {
                                 <TouchableOpacity 
                                     style={[
                                         styles.filterButton,
-                                        tab === 'mine' && styles.filterButtonActive
+                                       
                                     ]}
                                     onPress={() => handleTabChange('mine')}
                                 >
@@ -340,7 +367,7 @@ function Profile() {
                                 style={[
                                     styles.filterButton,
                                     {borderBottomRightRadius:25},
-                                    tab === 'favorite' && styles.filterButtonActive
+                                  
                                 ]}
                                 onPress={() => handleTabChange('favorite')}
                             >
@@ -370,7 +397,9 @@ function Profile() {
                             styles.videosGrid, 
                             { 
                                 paddingBottom: insets.bottom + height * 0.02, 
-                                marginHorizontal: width * 0.02 
+                                marginHorizontal: width * 0.02, 
+                                marginBottom:height*0.03,
+                                marginTop:height*0.005,
                             }
                         ]}
                         style={[
@@ -517,7 +546,8 @@ const styles = StyleSheet.create({
     },
     videosGrid: {
         alignItems: 'flex-start', 
-        marginVertical: 0,
+      
+      
     },
     videoItem: {
         height: 230,

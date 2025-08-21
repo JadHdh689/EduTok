@@ -7,10 +7,11 @@ import { colors, fonts, shadowIntensity } from '../src/constants';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Entypo from '@expo/vector-icons/Entypo';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { commonVideos } from '../src/mockData';
+import { commonVideos, addNewVideo } from '../src/mockData';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Upload = () => {
       const router = useRouter();
@@ -61,29 +62,111 @@ const [localVideos, setLocalVideos] = useState([...commonVideos]);
   };
 
   const handleUpload = () => {
+    // Validation for required fields
     if (questions.length < 3) {
       alert("You should post at least 3 questions");
-    } else if (!subjectValue) {
-      alert("Please choose a subject");
-    } else if (!difficultyValue) {
-      alert("Please specify the difficulty");
-    } else if (!description) {
-      alert("Please write a description");
-    } else {
-      const newVideo = {
-        id: commonVideos.length + 1,
-        uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg',
-        subject: subjectValue,
-        difficulty: difficultyValue,
-        creator: 'OutdoorJules',
-        questions,
-        description
-      };
-      commonVideos.push(newVideo);
-      setLocalVideos([...commonVideos]);
-      console.log("Uploaded video:", newVideo);
-      alert("Video uploaded successfully!");
+      return;
     }
+    
+    if (!subjectValue) {
+      alert("Please choose a subject");
+      return;
+    }
+    
+    if (!difficultyValue) {
+      alert("Please specify the difficulty");
+      return;
+    }
+    
+    if (!description || description.trim() === '') {
+      alert("Please write a description");
+      return;
+    }
+
+    // Validation for questions, options, and answers
+    for (let i = 0; i < questions.length; i++) {
+      const question = questions[i];
+      
+      if (!question.question || question.question.trim() === '') {
+        alert(`Question ${i + 1} cannot be empty`);
+        return;
+      }
+      
+      for (let j = 0; j < question.options.length; j++) {
+        if (!question.options[j] || question.options[j].trim() === '') {
+          alert(`Option ${j + 1} in Question ${i + 1} cannot be empty`);
+          return;
+        }
+      }
+      
+      if (!question.answer || question.answer.trim() === '') {
+        alert(`Answer for Question ${i + 1} cannot be empty`);
+        return;
+      }
+      
+      // Check if answer matches one of the options
+      if (!question.options.includes(question.answer)) {
+        alert(`Answer for Question ${i + 1} must match one of the options`);
+        return;
+      }
+    }
+
+    // All validation passed, create and upload the video
+    const newVideo = {
+      id: (commonVideos.length + 1).toString(),
+      title: `New ${subjectValue} Video`,
+      uri: 'https://img.youtube.com/vi/7wtfhZwyrcc/mqdefault.jpg',
+      subject: subjectValue,
+      difficulty: difficultyValue,
+      creator: 'OutdoorJules',
+      profile: 'https://randomuser.me/api/portraits/men/11.jpg',
+      likes: 0,
+      Comments: 0,
+      followed: false,
+      bio: 'Adventure photographer and nature enthusiast sharing the beauty of the outdoors through stunning visuals and peaceful walking tours.',
+      followers: 2500000,
+      following: 45,
+      description,
+      questions
+    };
+
+    // Add to commonVideos array using the function
+    addNewVideo(newVideo);
+    
+    // Save to AsyncStorage for persistence
+    const saveVideoToStorage = async () => {
+      try {
+        const existingVideos = await AsyncStorage.getItem('uploadedVideos');
+        let videosArray = existingVideos ? JSON.parse(existingVideos) : [];
+        videosArray.push(newVideo);
+        await AsyncStorage.setItem('uploadedVideos', JSON.stringify(videosArray));
+        console.log('Video saved to AsyncStorage');
+      } catch (error) {
+        console.error('Error saving video to AsyncStorage:', error);
+      }
+    };
+    
+    saveVideoToStorage();
+    
+    // Update local state
+    setLocalVideos([...commonVideos]);
+    
+    // Log the uploaded video
+    console.log("Uploaded video:", newVideo);
+    console.log("Total videos in commonVideos:", commonVideos.length);
+    console.log("Video added successfully to commonVideos array");
+    
+    // Show success message
+    alert("Video uploaded successfully!");
+    
+    // Reset form
+    setQuestions([createEmptyQuestion()]);
+    setDescription('');
+    setSubjectValue(null);
+    setDifficultyValue(null);
+    
+    // Navigate back to profile
+    router.push('/profile');
   };
 
   const renderQuestionBlock = (qIndex) => (
@@ -94,7 +177,7 @@ const [localVideos, setLocalVideos] = useState([...commonVideos]);
       <TextInput
         placeholder={`Question ${qIndex + 1}`}
         placeholderTextColor={colors.secondary}
-        style={styles.input}
+        style={[styles.input,{color:colors.secondary}]}
         onChangeText={(text) => handleQuestionInput(qIndex, "question", text)}
       />
       {[0, 1, 2].map((optIndex) => (
@@ -108,7 +191,7 @@ const [localVideos, setLocalVideos] = useState([...commonVideos]);
       <TextInput
         placeholder="Answer"
         placeholderTextColor={colors.secondary}
-        style={styles.input}
+        style={[styles.input,{color:colors.secondary}]}
         onChangeText={(text) => handleQuestionInput(qIndex, "answer", text)}
       />
     </View>
@@ -135,7 +218,7 @@ const [localVideos, setLocalVideos] = useState([...commonVideos]);
         </View>
 
         {/* Upload Section */}
-        <View style={styles.uploadSection}>
+        <View style={[styles.uploadSection, { marginBottom: 40 }]}>
           <View>
             <Text style={styles.sectionTitle}>Upload Video</Text>
             <View style={styles.uploadSection2}>
@@ -159,9 +242,9 @@ const [localVideos, setLocalVideos] = useState([...commonVideos]);
                   setValue={setSubjectValue}
                   setItems={setSubjectItems}
                   placeholder="Subject"
-                style={[styles.dropdown, { width: width * 0.35 }]}
-                                 dropDownContainerStyle={[styles.dropdownContainer, { width: width * 0.35 }]}
-                  zIndex={3000}
+                  style={[styles.dropdown, { width: width * 0.35 }]}
+                  dropDownContainerStyle={[styles.dropdownContainer, { width: width * 0.35 }]}
+                  zIndex={9999}
                   zIndexInverse={1000}
                 />
 
@@ -175,9 +258,9 @@ const [localVideos, setLocalVideos] = useState([...commonVideos]);
                   setValue={setDifficultyValue}
                   setItems={setDifficultyItems}
                   placeholder="Difficulty"
-              style={[styles.dropdown, { width: width * 0.35 }]}
+                  style={[styles.dropdown, { width: width * 0.35 }]}
                   dropDownContainerStyle={[styles.dropdownContainer, { width: width * 0.35 }]}
-                  zIndex={2000}
+                  zIndex={9998}
                   zIndexInverse={2000}
                 />
               </View>
@@ -191,7 +274,7 @@ const [localVideos, setLocalVideos] = useState([...commonVideos]);
         </View>
 
         {/* Video Description */}
-        <View style={{ paddingHorizontal: 15, paddingTop: 15 }}>
+        <View style={{ paddingHorizontal: 15, paddingTop: 30 }}>
           <Text style={styles.label}>Video Description</Text>
           <TextInput
             placeholder="Please enter video description"
@@ -269,10 +352,13 @@ const styles = StyleSheet.create({
     borderColor: "#c0c0c0",
     borderRadius: 10,
     backgroundColor: "white",
-    marginBottom: 10,
+    marginBottom: 15,
+    zIndex: 9999,
   },
   dropdownContainer: {
-    borderColor: "#c0c0c0"
+    borderColor: "#c0c0c0",
+    marginBottom: 15,
+    zIndex: 9999,
   },
   input: {
     borderWidth: 1,
@@ -312,7 +398,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.initial,
     alignSelf: "center",
     fontSize: 16,
-    color: colors.iconColor,
+    color: colors.initial,
   }
 });
 

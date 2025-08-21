@@ -74,14 +74,14 @@ function Fyp() {
         <SafeAreaView style={styles.container}>
             {/* Header Section */}
             <View style={[styles.header, shadowIntensity.bottomShadow]}>
-                <Text style={styles.headerText}>
+                <Text style={[styles.headerText,{fontSize:height*0.02}]}>
                     {fypState === "General" ? "General" : "Followed"}
                 </Text>
 
                 <MaterialCommunityIcons
                     onPress={handleTabChange}
                     name="rotate-3d-variant"
-                    size={24}
+                    size={height*0.025}
                     color={colors.iconColor}
                     style={styles.switchIcon}
                 />
@@ -120,20 +120,20 @@ const styles = StyleSheet.create({
         backgroundColor: colors.initial,
         flexDirection: 'column',
         width: '100%',
-        padding: 3,
-        paddingLeft: 9,
-        height: '5%', // Approximately 0.05 of screen height
+        paddingVertical: 10,
+        paddingHorizontal: 9,
+       
     },
     headerText: {
-        fontSize: 17,
+      
         color: colors.iconColor,
         fontFamily: fonts.initial,
-
+      
     },
     switchIcon: {
         alignSelf: 'flex-end',
         position: 'absolute',
-        padding: 6,
+      
     },
     videosGrid: {
         alignItems: 'flex-start',
