@@ -1,9 +1,9 @@
 
 export const colors={
-initial:"rgba(247, 247, 247, 1)",
+initial:"rgb(255, 255, 255)",
 secondary:"#fa0d0dff",
 iconColor:"#000000ff",
-screenColor:"rgba(247, 247, 247, 1)",
+screenColor:"rgb(255, 255, 255)",
 saveColor:"#ffec8cff",
 favColor:"#ec8a93ff",
 };
@@ -20,7 +20,7 @@ export const shadowIntensity = {
       width: 0,    // No horizontal shadow
       height: 2,   // Shadow only at bottom
     },
-    shadowOpacity: 1,
+    shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 5,  // For Android
   },

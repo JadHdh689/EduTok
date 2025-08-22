@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import Footer from '../src/components/footer';
 
 // Constants
-import { colors, fonts,shadowIntensity,getDifficultyBadgeStyle } from '../src/constants';
+import { colors, fonts, shadowIntensity, getDifficultyBadgeStyle } from '../src/constants';
 
 // Icons
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -39,13 +39,11 @@ function Fyp() {
             setVideos(GeneralRetrivedVids); // TODO: Fetch general videos from backend
         }
     };
-
-    // Handle video selection
     const handleVideoPress = (selectedVideo) => {
         const videoIndex = videos.findIndex(video => video.id === selectedVideo.id);
         router.push({
             pathname: '/fullScreen',
-            params: { 
+            params: {
                 initialIndex: videoIndex,
                 videoList: fypState === "General" ? "general" : "followed"
             }
@@ -54,19 +52,19 @@ function Fyp() {
 
     // Video Item Renderer
     const renderVideoItem = ({ item }) => (
-        <TouchableOpacity 
+        <TouchableOpacity
             style={[
-                styles.videoItem, 
-                { width: itemWidth }, 
+                styles.videoItem,
+                { width: itemWidth },
                 { margin: spacing / 2 }
             ]}
             onPress={() => handleVideoPress(item)}
         >
             <Image source={{ uri: item.uri }} style={styles.thumbnail} />
-            
+
             {/* Difficulty/Subject Badge */}
-            <View style={[styles.badgeBox,{backgroundColor:getDifficultyBadgeStyle(item.difficulty)}]}>
-                <Text style={[styles.badgeText,{textShadowColor:getDifficultyBadgeStyle(item.difficulty)}]}>
+            <View style={[styles.badgeBox, { backgroundColor: getDifficultyBadgeStyle(item.difficulty) }]}>
+                <Text style={[styles.badgeText, { textShadowColor: getDifficultyBadgeStyle(item.difficulty) }]}>
                     {item.subject || "N/A"}
                 </Text>
             </View>
@@ -76,19 +74,20 @@ function Fyp() {
     return (
         <SafeAreaView style={styles.container}>
             {/* Header Section */}
-            <View style={[styles.header,shadowIntensity.bottomShadow]}>
-                <Text style={styles.headerStyle}>
-                    {fypState == "General" ? "General" : "Followed"}
+            <View style={[styles.header, shadowIntensity.bottomShadow]}>
+                <Text style={[styles.headerText,{fontSize:height*0.02}]}>
+                    {fypState === "General" ? "General" : "Followed"}
                 </Text>
+
                 <MaterialCommunityIcons
                     onPress={handleTabChange}
                     name="rotate-3d-variant"
-                    size={24}
-                    color= {colors.iconColor}
+                    size={height*0.025}
+                    color={colors.iconColor}
                     style={styles.switchIcon}
                 />
             </View>
-            
+
             {/* Videos Grid Section */}
             <FlatList
                 data={videos}
@@ -105,7 +104,7 @@ function Fyp() {
                 ]}
                 showsVerticalScrollIndicator={false}
             />
-            
+
             {/* Footer Component */}
             <Footer />
         </SafeAreaView>
@@ -122,20 +121,20 @@ const styles = StyleSheet.create({
         backgroundColor: colors.initial,
         flexDirection: 'column',
         width: '100%',
-        padding: 3,
-        paddingLeft:9,
-        height: '5%', // Approximately 0.05 of screen height
+        paddingVertical: 10,
+        paddingHorizontal: 9,
+       
     },
     headerText: {
-        fontSize: 17,
+      
         color: colors.iconColor,
         fontFamily: fonts.initial,
-         
+      
     },
     switchIcon: {
         alignSelf: 'flex-end',
         position: 'absolute',
-        padding: 6,
+      
     },
     videosGrid: {
         alignItems: 'flex-start',
@@ -155,7 +154,7 @@ const styles = StyleSheet.create({
         height: '100%',
         borderRadius: 11,
     },
-  badgeBox:{
+    badgeBox: {
         position: 'absolute',
         top: 5,
         left: 5,
@@ -170,8 +169,8 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontFamily: fonts.initial,
         textTransform: 'uppercase',
-    textShadowOffset: { width: 0.5, height: 0.5}, 
-    textShadowRadius: 0.5,
+        textShadowOffset: { width: 0.5, height: 0.5 },
+        textShadowRadius: 0.5,
     }
 });
 

@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import {
+import { 
   TouchableWithoutFeedback,
   useWindowDimensions,
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
+  StyleSheet,  
+  View,  
+  Text,  
+  TouchableOpacity,  
+  TextInput,  
   ScrollView,
   Image,
   KeyboardAvoidingView,
-  Platform,
-  Alert
+  Platform
 } from 'react-native';
 import { colors, fonts, shadowIntensity } from '../src/constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,6 +35,7 @@ function EditProfile() {
   const [areasOfInterest, setAreasOfInterest] = useState([]);
   const [userName, setUserName] = useState("");
   const [isInterestVisible, setIsInterestVisible] = useState(false);
+  const [userProfileData, setUserProfileData] = useState(userProfiles.creator)
 
   // -----------------------
   // Checkbox Component
@@ -58,19 +58,19 @@ function EditProfile() {
                 }
                 onChange(updatedCheckedValues);
               }}
-              style={[styles.checkboxContainer, {
-                marginVertical: height * 0.005
-              }]}
-            >
-              <Fontisto
-                name={active ? "radio-btn-active" : "radio-btn-passive"}
-                size={20}
-                style={{ marginRight: width * 0.02 }}
-                color={active ? colors.secondary : "#ccc"}
-              />
-              <Text style={[styles.checkboxLabel, {
-                fontSize: width * 0.033
-              }]}>{option.label}</Text>
+                               style={[styles.checkboxContainer, {
+                   marginVertical: height * 0.005
+                 }]}
+               >
+                             <Fontisto
+                 name={active ? "radio-btn-active" : "radio-btn-passive"}
+                 size={20}
+                 style={{ marginRight: width * 0.02 }}
+                 color={active ? colors.secondary : "#ccc"}
+               />
+               <Text style={[styles.checkboxLabel, {
+                 fontSize: width * 0.033
+               }]}>{option.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -130,7 +130,7 @@ function EditProfile() {
            borderBottomLeftRadius: width * 0.06,
            borderBottomRightRadius: width * 0.06
          }]}>
-         <View style={[styles.headerBar, {paddingVertical:0}]}>
+         <View style={[styles.headerBar, {flexGrow:1 ,flexShrink:1,paddingVertical:3}]}>
              <Ionicons 
                name="caret-back-outline" 
                onPress={() => router.push('/profile')} 
@@ -205,7 +205,7 @@ function EditProfile() {
            paddingHorizontal: width * 0.02
          }}>
            <Text style={[styles.profileInfoText, {
-             fontSize: height * 0.013,
+             fontSize: height * 0.02,
              marginBottom: height * 0.005,
              lineHeight: width * 0.035,
              paddingTop: height * 0.008,

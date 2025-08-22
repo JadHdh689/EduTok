@@ -5,7 +5,7 @@ import { colors, fonts } from '../constants';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Fontisto from '@expo/vector-icons/Fontisto';
 
-const Radio = ({options, checkedValue, onChange}) => {
+export const Radio = ({options, checkedValue, onChange, disabled = false}) => {
     return (
         <View>
             {options.map((option) => {
@@ -13,8 +13,9 @@ const Radio = ({options, checkedValue, onChange}) => {
                 return (
                     <TouchableOpacity 
                         style={styles.optionContainer} 
-                        onPress={() => onChange(option.value)}
+                        onPress={() => !disabled && onChange(option.value)}
                         key={option.value}
+                        disabled={disabled}
                     >
                         <Fontisto 
                             name={active ? "radio-btn-active" : "radio-btn-passive"} 
