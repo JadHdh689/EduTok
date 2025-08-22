@@ -270,12 +270,7 @@ function FullScreen() {
                         offset: height * index,
                         index,
                     })}
-                    initialScrollIndex={initialIndex}
-                    getItemLayout={(data, index) => ({
-                        length: height,
-                        offset: height * index,
-                        index,
-                    })}
+
                 />
                 {/* Header */}
                 <View style={styles.header}>
