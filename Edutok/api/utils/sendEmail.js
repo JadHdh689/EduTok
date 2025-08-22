@@ -3,15 +3,20 @@ const nodemailer = require('nodemailer');
 const sendEmail = async (to, message, subject = 'EduTok Notification') => {
   try {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: "elhariri2023@gmail.com",
+        pass: "lttnqczgtkdgidhx"
       }
     });
 
+
+    console.log("EMAIL_USER:", "elhariri2023@gmail.com");
+
     await transporter.sendMail({
-      from: `"EduTok" <${process.env.EMAIL_USER}>`,
+      from: `"EduTok" <${"elhariri2023@gmail.com"}>`,
       to,
       subject,
       text: message

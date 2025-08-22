@@ -53,7 +53,7 @@ const handleLogin = async () => {
       // ✅ Handle not-verified error explicitly
       if (data?.error?.toLowerCase().includes("verify")) {
         Alert.alert("Email Not Verified", "Please check your inbox for the OTP.");
-        router.replace({ pathname: "/verify", params: { email: emailNormalized } });
+        router.replace({ pathname: "/verifyOtp", params: { email: emailNormalized } });
       } else {
         Alert.alert("Error", data?.error || "Login failed");
       }

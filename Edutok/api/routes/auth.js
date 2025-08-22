@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 
 const User = require('../models/user');
 const sendEmail = require('../utils/sendEmail');
-const authMiddleware = require('../middleware/auth');
+//cons = require('../middleware/auth');
 
 // -------------------- SIGNUP --------------------
 router.post('/signup', async (req, res) => {
@@ -144,7 +144,7 @@ router.post('/login', async (req, res) => {
 });
 
 // -------------------- GET PROFILE --------------------
-router.get("/profile", authMiddleware, async (req, res) => {
+router.get("/profile", async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password_hash -otp_code -otp_expires_at");
     if (!user) return res.status(404).json({ error: "User not found" });
@@ -157,7 +157,7 @@ router.get("/profile", authMiddleware, async (req, res) => {
 });
 
 // -------------------- UPDATE PROFILE --------------------
-router.put("/profile", authMiddleware, async (req, res) => {
+router.put("/profile", async (req, res) => {
   try {
     const { name, bio, preferences } = req.body;
 
@@ -227,7 +227,7 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // -------------------- CURRENT USER (/me) --------------------
-router.get('/me', authMiddleware, async (req, res) => {
+router.get('/me', async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password_hash -otp_code -otp_expires_at');
     if (!user) return res.status(404).json({ error: 'User not found' });

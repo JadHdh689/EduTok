@@ -91,7 +91,7 @@ const handleSignUp = async () => {
     );
 
     // ✅ Move user to verification page with email pre-filled
-    router.replace({ pathname: "/verify", params: { email: emailNormalized } });
+    router.replace({ pathname: "/verifyOtp", params: { email: emailNormalized } });
 
   } catch (error) {
     console.log("Signup error:", error);
