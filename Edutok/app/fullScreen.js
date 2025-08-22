@@ -1,7 +1,6 @@
 import { Image, FlatList, useWindowDimensions, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useEffect, useRef, useEffect, useRef } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 // Components
@@ -19,7 +18,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Fontisto from '@expo/vector-icons/Fontisto';
 
 // Mock Data - Will be replaced with API calls
-import { user, GeneralRetrivedVids, FollowedRetrivedVids, myVideos, myVideos } from '../src/mockData';
+import { user, GeneralRetrivedVids, FollowedRetrivedVids, myVideos } from '../src/mockData';
 
 function FullScreen() {
     // State Management
