@@ -1,8 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Components
 import Footer from '../src/components/footer';
