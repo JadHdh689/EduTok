@@ -18,79 +18,90 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
-    }
+const handleLogin = async () => {
+  if (!email || !password) {
+    Alert.alert("Error", "Please fill in all fields");
+    return;
+  }
 
-    const emailNormalized = email.trim().toLowerCase();
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
-    if (!emailOk) {
-      Alert.alert("Error", "Enter a valid email address");
-      return;
-    }
+  const emailNormalized = email.trim().toLowerCase();
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNormalized);
+  if (!emailOk) {
+    Alert.alert("Error", "Enter a valid email address");
+    return;
+  }
 
+  try {
+    setIsLoading(true);
+    console.log("👉 Sending login request to:", `${CONFIG.API_URL}/api/auth/login`);
+
+    const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: emailNormalized, password }),
+    });
+
+    console.log("👉 Got response status:", res.status);
+
+    let data = null;
     try {
-      setIsLoading(true);
-
-      const res = await fetch(`${CONFIG.API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailNormalized, password }),
-      });
-
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {
-        data = { error: "Unexpected server response" };
-      }
-
-      setIsLoading(false);
-
-      if (!res.ok) {
-        // ✅ Handle not-verified error explicitly
-        if (data?.error?.toLowerCase().includes("verify")) {
-          Alert.alert("Email Not Verified", "Please check your inbox for the OTP.");
-          router.replace({ pathname: "/verifyOtp", params: { email: emailNormalized } });
-        } else {
-          Alert.alert("Error", data?.error || "Login failed");
-        }
-        return;
-      }
-
-      // ✅ Save token
-      await AsyncStorage.setItem("auth_token", data.token);
-
-      // ✅ Save user info properly
-      let userInfo = data.user || null;
-      try {
-        const meRes = await fetch(`${CONFIG.API_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${data.token}` },
-        });
-        if (meRes.ok) {
-          const meData = await meRes.json();
-          userInfo = meData.user; // <-- FIX: store actual user object
-        }
-      } catch (err) {
-        console.log("Error fetching /auth/me:", err);
-      }
-
-      if (userInfo) {
-        await AsyncStorage.setItem("user_info", JSON.stringify(userInfo));
-      }
-
-      Alert.alert("Success", "Login successful");
-
-      // ✅ Take user to home/profile
-      router.replace("/profile"); // or "/home" if you have that page
-
+      data = await res.json();
     } catch (err) {
-      setIsLoading(false);
-      Alert.alert("Error", "Network error. Try again.");
+      console.log("👉 Failed to parse JSON:", err);
+      data = { error: "Unexpected server response" };
     }
-  };
+
+    console.log("👉 Response body:", data);
+    setIsLoading(false);
+
+    if (!res.ok) {
+      const errMsg = data?.error?.toLowerCase() || "";
+      console.log("👉 Login API returned error:", errMsg);
+
+      // redirect to verifyOtp ONLY if backend said "verify your email"
+      if (res.status === 400 && errMsg.includes("verify")) {
+        Alert.alert("Email Not Verified", "Please check your inbox for the OTP.");
+        router.replace({ pathname: "/verifyOtp", params: { email: emailNormalized } });
+      } else {
+        Alert.alert("Error", data?.error || "Login failed");
+      }
+      return;
+    }
+
+    // ✅ Save token
+    await AsyncStorage.setItem("auth_token", data.token);
+
+    // ✅ Fetch user info from /me
+    let userInfo = data.user || null;
+    try {
+      const meRes = await fetch(`${CONFIG.API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${data.token}` },
+      });
+      console.log("👉 /auth/me response status:", meRes.status);
+
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        console.log("👉 /auth/me response body:", meData);
+        userInfo = meData.user;
+      }
+    } catch (err) {
+      console.log("👉 Error fetching /auth/me:", err);
+    }
+
+    if (userInfo) {
+      await AsyncStorage.setItem("user_info", JSON.stringify(userInfo));
+    }
+
+    Alert.alert("Success", "Login successful ✅");
+    router.replace("/profile");
+
+  } catch (err) {
+    setIsLoading(false);
+    console.error("👉 Login request failed:", err);
+    Alert.alert("Error", "Network error. Try again.");
+  }
+};
+
 
   return (
     <SafeAreaView style={styles.container}>
