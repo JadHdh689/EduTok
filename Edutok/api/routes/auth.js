@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 
 const User = require('../models/user');
 const sendEmail = require('../utils/sendEmail');
-//cons = require('../middleware/auth');
+const authMiddleware = require('../middleware/auth');
 
 // -------------------- SIGNUP --------------------
 router.post('/signup', async (req, res) => {
@@ -107,44 +107,41 @@ router.post('/login', async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'Invalid email or password' });
+    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
-    if (!user.is_verified) {
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
+
+    // Check if verified
+    if (!user.verified) {
       return res.status(403).json({ error: 'Please verify your email before logging in' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid email or password' });
-
-    const expiresInEnv = process.env.JWT_EXPIRES_IN;
-    const expiresIn = /^\d+$/.test(expiresInEnv) ? parseInt(expiresInEnv) : (expiresInEnv || '7d');
-
+    // ✅ Issue JWT
     const token = jwt.sign(
-      { user_id: user._id, role: user.role, is_admin: user.is_admin },
-      process.env.JWT_SECRET,
-      { expiresIn }
+      { id: user._id },                // payload
+      process.env.JWT_SECRET,          // secret
+      { expiresIn: '7d' }              // options
     );
 
-    res.status(200).json({
-      message: 'Login successful',
+    res.json({
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        is_admin: user.is_admin
-      }
+        preferences: user.preferences || {},
+      },
     });
-
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Login failed. Please try again.' });
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
 // -------------------- GET PROFILE --------------------
-router.get("/profile", async (req, res) => {
+router.get("/profile", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password_hash -otp_code -otp_expires_at");
     if (!user) return res.status(404).json({ error: "User not found" });
@@ -157,7 +154,7 @@ router.get("/profile", async (req, res) => {
 });
 
 // -------------------- UPDATE PROFILE --------------------
-router.put("/profile", async (req, res) => {
+router.put("/profile", authMiddleware, async (req, res) => {
   try {
     const { name, bio, preferences } = req.body;
 
@@ -227,15 +224,18 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // -------------------- CURRENT USER (/me) --------------------
-router.get('/me', async (req, res) => {
+router.get('/me', authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password_hash -otp_code -otp_expires_at');
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     res.json({ user });
   } catch (err) {
-    console.error("Get me error:", err.message);
+    console.error('Error fetching user info:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
+
 
 module.exports = router;
