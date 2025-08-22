@@ -2,7 +2,7 @@
 // Centralized API configuration for EduTok frontend
 
 const CONFIG = {
-  API_URL: "http://192.168.0.108:5000", // Backend base URL
+  API_URL: "http://192.168.57.253:5000", // Backend base URL
 };
 
 export default CONFIG;
