@@ -1,10 +1,29 @@
-import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from '../prisma/prisma.module';
+import { UsersModule } from './users/users.module';
+import { VideosModule } from './videos/videos.module';
+import { CoursesModule } from './courses/courses.module';
+import { FollowModule } from './follow/follow.module';
+import { CategoriesModule } from './categories/categories.module';
+import { FeedModule } from './feed/feed.module';
+import { AuthMiddleware } from './middlewares/AuthMiddleware';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    UsersModule,
+    VideosModule,
+    CoursesModule,
+    FollowModule,
+    CategoriesModule,
+    FeedModule,
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule{
+  configure(consumer: MiddlewareConsumer){
+    consumer.apply(AuthMiddleware).forRoutes(
+    '*',);
+  }
+}
