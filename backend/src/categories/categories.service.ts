@@ -1,26 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class CategoriesService {
-  create(createCategoryDto: CreateCategoryDto) {
-    return 'This action adds a new category';
+  constructor(private prisma: PrismaService) {}
+
+  list() {
+    return this.prisma.category.findMany({ orderBy: { name: 'asc' } });
   }
 
-  findAll() {
-    return `This action returns all categories`;
-  }
+  async setPreferences(authSub: string, categoryIds: number[]) {
+    const me = await this.prisma.user.findUnique({ where: { authSub } });
+    if (!me) throw new Error('User not found');
 
-  findOne(id: number) {
-    return `This action returns a #${id} category`;
-  }
-
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+    // Upsert simple weights = 1
+    await this.prisma.$transaction([
+      this.prisma.userCategoryPreference.deleteMany({ where: { userId: me.id } }),
+      this.prisma.userCategoryPreference.createMany({
+        data: categoryIds.map(id => ({ userId: me.id, categoryId: id, weight: 1 })),
+      }),
+    ]);
+    return { ok: true };
   }
 }
