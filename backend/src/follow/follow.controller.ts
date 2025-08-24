@@ -1,34 +1,20 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { FollowService } from './follow.service';
-import { CreateFollowDto } from './dto/create-follow.dto';
-import { UpdateFollowDto } from './dto/update-follow.dto';
+import { Body, Controller, Delete, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import { FollowsService } from './follow.service';
+import { FollowDto } from './dto/follow.dto';
 
-@Controller('follow')
-export class FollowController {
-  constructor(private readonly followService: FollowService) {}
+@Controller('follows')
+export class FollowsController {
+  constructor(private readonly follows: FollowsService) {}
 
   @Post()
-  create(@Body() createFollowDto: CreateFollowDto) {
-    return this.followService.create(createFollowDto);
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  follow(@Req() req: any, @Body() dto: FollowDto) {
+    return this.follows.follow(req.auth.sub, dto.userId);
   }
 
-  @Get()
-  findAll() {
-    return this.followService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.followService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateFollowDto: UpdateFollowDto) {
-    return this.followService.update(+id, updateFollowDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.followService.remove(+id);
+  @Delete()
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  unfollow(@Req() req: any, @Body() dto: FollowDto) {
+    return this.follows.unfollow(req.auth.sub, dto.userId);
   }
 }
