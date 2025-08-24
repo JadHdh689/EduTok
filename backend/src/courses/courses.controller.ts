@@ -1,34 +1,42 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Body, Controller, Param, Patch, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
-import { UpdateCourseDto } from './dto/update-course.dto';
+import { AddChapterDto } from './dto/add-chapter.dto';
+import { AddSectionDto } from './dto/add-section.dto';
+import { EnrollDto } from './dto/enroll.dto';
+import { SubmitSectionQuizDto } from './dto/submit-section-quiz.dto';
 
 @Controller('courses')
 export class CoursesController {
-  constructor(private readonly coursesService: CoursesService) {}
+  constructor(private readonly courses: CoursesService) {}
 
   @Post()
-  create(@Body() createCourseDto: CreateCourseDto) {
-    return this.coursesService.create(createCourseDto);
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  createCourse(@Req() req: any, @Body() dto: CreateCourseDto) {
+    return this.courses.createCourse(req.auth.sub, dto);
   }
 
-  @Get()
-  findAll() {
-    return this.coursesService.findAll();
+  @Post(':courseId/chapters')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  addChapter(@Req() req: any, @Param('courseId') courseId: string, @Body() dto: AddChapterDto) {
+    return this.courses.addChapter(courseId, dto, req.auth.sub);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.coursesService.findOne(+id);
+  @Post('chapters/:chapterId/sections')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  addSection(@Req() req: any, @Param('chapterId') chapterId: string, @Body() dto: AddSectionDto) {
+    return this.courses.addSection(chapterId, dto, req.auth.sub);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCourseDto: UpdateCourseDto) {
-    return this.coursesService.update(+id, updateCourseDto);
+  @Post('enroll')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  enroll(@Req() req: any, @Body() dto: EnrollDto) {
+    return this.courses.enroll(req.auth.sub, dto.courseId);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.coursesService.remove(+id);
+  @Post('submit-section-quiz')
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  submitSectionQuiz(@Req() req: any, @Body() dto: SubmitSectionQuizDto) {
+    return this.courses.submitSectionQuiz(req.auth.sub, dto);
   }
 }
