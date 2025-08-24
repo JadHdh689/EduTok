@@ -1,34 +1,29 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+// src/feed/feed.controller.ts
+import { Controller, Get, Query, Req } from '@nestjs/common';
 import { FeedService } from './feed.service';
-import { CreateFeedDto } from './dto/create-feed.dto';
-import { UpdateFeedDto } from './dto/update-feed.dto';
 
 @Controller('feed')
 export class FeedController {
-  constructor(private readonly feedService: FeedService) {}
+  constructor(private readonly feed: FeedService) {}
 
-  @Post()
-  create(@Body() createFeedDto: CreateFeedDto) {
-    return this.feedService.create(createFeedDto);
+  @Get('general')
+  general(
+    @Req() req: any,
+    @Query('take') take?: string,
+    @Query('afterCreatedAt') afterCreatedAt?: string,
+    @Query('afterId') afterId?: string,
+  ) {
+    const after = afterCreatedAt && afterId ? { createdAt: afterCreatedAt, id: afterId } : undefined;
+    return this.feed.general(req.auth.sub, take ? parseInt(take) : 10, after);
   }
 
-  @Get()
-  findAll() {
-    return this.feedService.findAll();
+  @Get('following')
+  following(@Req() req: any, @Query('take') take?: string, @Query('page') page?: string) {
+    return this.feed.following(req.auth.sub, take ? parseInt(take) : 10, page ? parseInt(page) : 0);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.feedService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateFeedDto: UpdateFeedDto) {
-    return this.feedService.update(+id, updateFeedDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.feedService.remove(+id);
+  @Get('courses')
+  courses(@Query('q') q = '', @Query('take') take?: string, @Query('page') page?: string) {
+    return this.feed.searchCourses(q, take ? parseInt(take) : 10, page ? parseInt(page) : 0);
   }
 }

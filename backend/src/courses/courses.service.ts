@@ -1,3 +1,4 @@
+// src/courses/courses.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCourseDto } from './dto/create-course.dto';
@@ -34,7 +35,7 @@ export class CoursesService {
   }
 
   async addSection(chapterId: string, dto: AddSectionDto, authorAuthSub: string) {
-    const chapter = await this.prisma.chapter.findUnique({ where: { id: chapterId } , include:{course:true}});
+    const chapter = await this.prisma.chapter.findUnique({ where: { id: chapterId }, include: { course: true } });
     if (!chapter) throw new NotFoundException('Chapter not found');
     await this.ensureCourseOwner(chapter.courseId, authorAuthSub);
 
@@ -80,17 +81,34 @@ export class CoursesService {
 
     const section = await this.prisma.section.findUnique({
       where: { id: dto.sectionId },
-      include: { video: { include: { quiz: { include: { questions: { include: { options: true } } } } } } },
+      include: {
+        chapter: true, // <-- needed to access courseId
+        video: {
+          include: {
+            quiz: {
+              include: {
+                questions: { include: { options: true } },
+              },
+            },
+          },
+        },
+      },
     });
     if (!section) throw new NotFoundException('Section not found');
+
     const quiz = section.video.quiz;
     if (!quiz) throw new BadRequestException('Section video has no quiz');
 
-    // Create attempt + grade
-    const { score, max, answersPayload } = grade(quiz.questions.map(q => ({
-      id: q.id,
-      options: q.options.map(o => ({ id: o.id, correct: o.isCorrect })),
-    })), dto.answers);
+    const courseId = section.chapter.courseId; // <-- derive courseId from chapter
+
+    // Grade
+    const { score, max, answersPayload } = grade(
+      quiz.questions.map(q => ({
+        id: q.id,
+        options: q.options.map(o => ({ id: o.id, correct: o.isCorrect })),
+      })),
+      dto.answers,
+    );
 
     return this.prisma.$transaction(async tx => {
       const attempt = await tx.quizAttempt.create({
@@ -101,7 +119,7 @@ export class CoursesService {
           completedAt: new Date(),
           score,
           maxScore: max,
-          passed: score === max, // simple; or use passScore
+          passed: score === max, // or compare to passScore if you set one
         },
       });
 
@@ -136,14 +154,20 @@ export class CoursesService {
         },
       });
 
-      // Recompute course progress % (simple: completed sections / total sections)
-      const allSections = await tx.section.count({ where: { chapter: { courseId: section.chapterId } } });
+      // Recompute course progress % (completed sections / total sections in this course)
+      const allSections = await tx.section.count({ where: { chapter: { courseId } } });
       const completedSections = await tx.sectionProgress.count({
-        where: { userId: user.id, completedAt: { not: null }, section: { chapter: { courseId: section.chapterId } } },
+        where: {
+          userId: user.id,
+          completedAt: { not: null },
+          section: { chapter: { courseId } },
+        },
       });
+
       const pct = allSections ? Math.floor((completedSections / allSections) * 100) : 0;
+
       await tx.courseEnrollment.updateMany({
-        where: { userId: user.id, courseId: section.chapterId ? section.courseId : section.chapter.courseId },
+        where: { userId: user.id, courseId },
         data: { progressPct: pct, completedAt: pct === 100 ? new Date() : null },
       });
 
@@ -155,7 +179,9 @@ export class CoursesService {
     const course = await this.prisma.course.findUnique({ where: { id: courseId } });
     if (!course) throw new NotFoundException('Course not found');
     const me = await this.prisma.user.findUnique({ where: { authSub } });
-    if (!me || course.authorId !== me.id) throw new BadRequestException('Only author can modify the course');
+    if (!me || course.authorId !== me.id) {
+      throw new BadRequestException('Only author can modify the course');
+    }
   }
 }
 

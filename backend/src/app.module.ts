@@ -4,7 +4,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { UsersModule } from './users/users.module';
 import { VideosModule } from './videos/videos.module';
 import { CoursesModule } from './courses/courses.module';
-import { FollowModule } from './follow/follow.module';
+import { FollowsModule } from './follow/follow.module';
 import { CategoriesModule } from './categories/categories.module';
 import { FeedModule } from './feed/feed.module';
 import { AuthMiddleware } from './middlewares/AuthMiddleware';
@@ -16,7 +16,7 @@ import { AuthMiddleware } from './middlewares/AuthMiddleware';
     UsersModule,
     VideosModule,
     CoursesModule,
-    FollowModule,
+    FollowsModule,
     CategoriesModule,
     FeedModule,
   ],
