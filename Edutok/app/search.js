@@ -1,6 +1,7 @@
 import { useWindowDimensions, StyleSheet, View, Text, Image, FlatList, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 
 // Components
 import Footer from '../src/components/footer';
@@ -13,7 +14,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AntDesign from '@expo/vector-icons/AntDesign';
 
 // Mock Data - Will be replaced with API calls
-import { GeneralRetrivedVids } from '../src/mockData';
+import { GeneralRetrivedVids, subscribedCourses } from '../src/mockData';
 
 function Search() {
     // State Management
@@ -21,11 +22,15 @@ function Search() {
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
 
+    // Navigation
+    const router = useRouter();
+
     // Layout Calculations
     const { width, height } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const spacing = 8;
     const itemWidth = ((width - spacing * 3) / 2);
+    const courseItemWidth = width - 20; // Full width minus padding
 
     // Search Handler
     const handleSearch = (query) => {
@@ -48,7 +53,56 @@ function Search() {
         }, 500);
     };
 
-    // Video Item Renderer
+    // Course Item Renderer
+    const renderCourseItem = ({ item }) => (
+        <TouchableOpacity 
+            style={styles.courseItem}
+            onPress={() => router.push({
+                pathname: '/courseDetails',
+                params: { courseId: item.id }
+            })}
+        >
+            <Image source={{ uri: item.thumbnailUrl }} style={styles.courseThumbnail} />
+            
+            {/* Course Info */}
+            <View style={styles.courseInfo}>
+                <Text style={styles.courseTitle} numberOfLines={2}>
+                    {item.title}
+                </Text>
+                <Text style={styles.courseCreator} numberOfLines={1}>
+                    by {item.creator}
+                </Text>
+                <Text style={styles.courseDescription} numberOfLines={2}>
+                    {item.description}
+                </Text>
+                
+                {/* Course Stats */}
+                <View style={styles.courseStats}>
+                    <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyBadgeStyle(item.difficulty) }]}>
+                        <Text style={styles.difficultyText}>{item.difficulty}</Text>
+                    </View>
+                    <Text style={styles.courseStatsText}>
+                        {item.totalChapters} chapters • {item.enrolledStudents} students
+                    </Text>
+                </View>
+                
+                {/* Progress Bar */}
+                <View style={styles.progressContainer}>
+                    <Text style={styles.progressText}>Progress: {item.progress}%</Text>
+                    <View style={styles.progressBarBackground}>
+                        <View 
+                            style={[
+                                styles.progressBarFill, 
+                                { width: `${item.progress}%` }
+                            ]} 
+                        />
+                    </View>
+                </View>
+            </View>
+        </TouchableOpacity>
+    );
+
+    // Video Item Renderer (for search results)
     const renderVideoItem = ({ item }) => (
         <TouchableOpacity style={[
             styles.videoItem, 
@@ -87,7 +141,7 @@ function Search() {
                     <MaterialIcons name="search" size={20} color="gray" style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search videos, creators, subjects..."
+                        placeholder="Search courses, creators, subjects..."
                         placeholderTextColor="gray"
                         value={searchQuery}
                         onChangeText={handleSearch}
@@ -102,17 +156,26 @@ function Search() {
                 </View>
             </View>
 
-            {/* Search Results */}
+            {/* Content */}
             <View style={styles.content}>
                 {isSearching ? (
                     <View style={styles.loadingContainer}>
                         <Text style={styles.loadingText}>Searching...</Text>
                     </View>
                 ) : searchQuery.trim() === '' ? (
-                    <View style={styles.emptyContainer}>
-                        <MaterialIcons name="search" size={60} color="gray" />
-                        <Text style={styles.emptyText}>Start typing to search</Text>
-                        <Text style={styles.emptySubtext}>Find videos, creators, and subjects</Text>
+                    // Show subscribed courses when not searching
+                    <View style={styles.coursesSection}>
+                        <Text style={styles.sectionTitle}>My Courses</Text>
+                        <FlatList
+                            data={subscribedCourses}
+                            renderItem={renderCourseItem}
+                            keyExtractor={(item) => item.id}
+                            contentContainerStyle={[
+                                styles.coursesList,
+                                { paddingBottom: insets.bottom + 60 }
+                            ]}
+                            showsVerticalScrollIndicator={false}
+                        />
                     </View>
                 ) : searchResults.length === 0 ? (
                     <View style={styles.emptyContainer}>
@@ -121,6 +184,7 @@ function Search() {
                         <Text style={styles.emptySubtext}>Try different keywords</Text>
                     </View>
                 ) : (
+                    // Show search results
                     <FlatList
                         data={searchResults}
                         renderItem={renderVideoItem}
@@ -217,6 +281,111 @@ const styles = StyleSheet.create({
         marginTop: 8,
         textAlign: 'center',
     },
+    
+    // Courses Section Styles
+    coursesSection: {
+        flex: 1,
+        paddingHorizontal: 10,
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontFamily: fonts.initial,
+        color: colors.iconColor,
+        fontWeight: 'bold',
+        marginBottom: 15,
+        marginLeft: 5,
+    },
+    coursesList: {
+        paddingHorizontal: 5,
+    },
+    courseItem: {
+        flexDirection: 'row',
+        backgroundColor: 'white',
+        borderRadius: 12,
+        marginBottom: 12,
+        padding: 12,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    courseThumbnail: {
+        width: 80,
+        height: 80,
+        borderRadius: 8,
+        marginRight: 12,
+    },
+    courseInfo: {
+        flex: 1,
+        justifyContent: 'space-between',
+    },
+    courseTitle: {
+        fontSize: 16,
+        fontFamily: fonts.initial,
+        color: colors.iconColor,
+        fontWeight: 'bold',
+        marginBottom: 4,
+    },
+    courseCreator: {
+        fontSize: 12,
+        fontFamily: fonts.initial,
+        color: colors.secondary,
+        marginBottom: 4,
+    },
+    courseDescription: {
+        fontSize: 12,
+        fontFamily: fonts.initial,
+        color: 'gray',
+        marginBottom: 8,
+    },
+    courseStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    difficultyBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        marginRight: 8,
+    },
+    difficultyText: {
+        color: 'white',
+        fontSize: 10,
+        fontFamily: fonts.initial,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+    },
+    courseStatsText: {
+        fontSize: 10,
+        fontFamily: fonts.initial,
+        color: 'gray',
+    },
+    progressContainer: {
+        marginTop: 4,
+    },
+    progressText: {
+        fontSize: 10,
+        fontFamily: fonts.initial,
+        color: colors.iconColor,
+        marginBottom: 4,
+    },
+    progressBarBackground: {
+        height: 4,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 2,
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: colors.secondary,
+        borderRadius: 2,
+    },
+    
+    // Video Grid Styles (for search results)
     videosGrid: {
         alignItems: 'flex-start',
         alignSelf: 'center',
