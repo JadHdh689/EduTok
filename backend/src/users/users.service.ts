@@ -16,6 +16,7 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { authSub } });
   }
 
+  // CREATE via Cognito token (implicit)
   async upsertFromToken(auth: { sub: string; email?: string; username?: string }) {
     const { sub, email, username } = auth;
     return this.prisma.user.upsert({
@@ -33,6 +34,7 @@ export class UsersService {
     });
   }
 
+  // UPDATE (self)
   async updateProfile(userId: string, data: { displayName?: string; bio?: string; avatarUrl?: string }) {
     return this.prisma.user.update({
       where: { id: userId },
@@ -42,5 +44,57 @@ export class UsersService {
         avatarUrl: data.avatarUrl,
       },
     });
+  }
+
+  // ===== Admin CRUD =====
+
+  // list/search
+  async listUsers(params?: { q?: string; take?: number; skip?: number }) {
+    const q = params?.q?.trim();
+    const where: Prisma.UserWhereInput | undefined = q
+      ? {
+          OR: [
+            { username: { contains: q, mode: 'insensitive' } },
+            { displayName: { contains: q, mode: 'insensitive' } },
+            { email: { contains: q, mode: 'insensitive' } },
+          ],
+        }
+      : undefined;
+
+    return this.prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: params?.take ?? 20,
+      skip: params?.skip ?? 0,
+    });
+  }
+
+
+  // admin read by id
+  async adminGetById(id: string) {
+    return this.findById(id);
+  }
+
+  // admin update (role, display, etc.)
+  async adminUpdate(id: string, data: { displayName?: string; bio?: string; avatarUrl?: string; role?: 'USER'|'ADMIN' }) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        displayName: data.displayName,
+        bio: data.bio,
+        avatarUrl: data.avatarUrl,
+        role: data.role,
+      },
+    });
+  }
+
+  // delete self
+  async deleteSelf(id: string) {
+    return this.prisma.user.delete({ where: { id } });
+  }
+
+  // admin delete
+  async adminDelete(id: string) {
+    return this.prisma.user.delete({ where: { id } });
   }
 }
