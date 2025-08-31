@@ -1,4 +1,3 @@
-// FILE: src/services/api.ts
 import axios, { type AxiosRequestConfig } from 'axios';
 
 export type Tokens = {
@@ -31,6 +30,7 @@ export const UploadsAPI = {
     return data as { url: string; key: string; bucket: string; expiresIn: number };
   },
 };
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Auth header
 // ─────────────────────────────────────────────────────────────────────────────
@@ -72,8 +72,10 @@ api.interceptors.response.use(
           });
           tokenStore.save({ ...t, ...data, refreshToken: t.refreshToken });
         } catch (e) {
+          // clear tokens and release waiters so they error out/redirect as needed
           tokenStore.save(null);
           refreshing = false;
+          queue.forEach((f) => f());
           queue = [];
           return Promise.reject(error);
         }
@@ -133,13 +135,17 @@ export const AuthAPI = {
       newPassword,
     });
   },
-  signOut() {
-    return api.post('/auth/signout');
+  async signOut() {
+    try {
+      await api.post('/auth/signout');
+    } finally {
+      tokenStore.save(null);
+    }
   },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Common
+/** Common */
 // ─────────────────────────────────────────────────────────────────────────────
 export const CommonAPI = {
   async listCategories() {
@@ -149,7 +155,7 @@ export const CommonAPI = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Videos
+/** Videos */
 // ─────────────────────────────────────────────────────────────────────────────
 export type PresignPost = {
   method?: 'POST';
@@ -165,21 +171,39 @@ export type PresignPut = {
   headers?: Record<string, string>;
 };
 
+export type VideoQuizPublic = {
+  quiz: null | {
+    id: string;
+    title: string;
+    questions: { id: string; text: string; options: { id: string; text: string }[] }[];
+  };
+  section: null | { id: string; chapterId: string };
+  sectionsCount?: number; // optional
+};
+
+export type QuizAttemptResult = {
+  attemptId: string;
+  score: number;
+  maxScore: number;
+  passed: boolean;
+};
+
 export const VideosAPI = {
-   async get(id: string) {
+  async get(id: string) {
     const { data } = await api.get(`/videos/${id}`);
     return data as any;
   },
-  // in services/api.ts inside VideosAPI:
-async delete(id: string) {
-  const { data } = await api.delete(`/videos/${id}`);
-  return data;
-},
+
+  async delete(id: string) {
+    const { data } = await api.delete(`/videos/${id}`);
+    return data;
+  },
 
   async streamUrl(id: string) {
     const { data } = await api.get(`/videos/${id}/stream`);
     return data as { url: string };
   },
+
   async listMine() {
     const { data } = await api.get('/videos', { params: { mine: 1 } });
     return data as any[];
@@ -203,26 +227,222 @@ async delete(id: string) {
     description?: string;
     s3Key: string;
     durationSec: number;
-    quiz: { text: string; options: { text: string; isCorrect?: boolean }[] }[]; // <-- isCorrect
+    quiz: { text: string; options: { text: string; isCorrect?: boolean }[] }[];
   }) {
     const { data } = await api.post('/videos', payload);
     return data;
   },
-};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Courses
-// ─────────────────────────────────────────────────────────────────────────────
-export const CoursesAPI = {
-  async listMine() {
-    const { data } = await api.get('/courses', { params: { mine: 1 } });
-    return data as any[];
+  // ---- Likes ----
+  async like(id: string) {
+    const { data } = await api.post(`/videos/${id}/like`);
+    return data as { ok: true };
+  },
+
+  async unlike(id: string) {
+    const { data } = await api.delete(`/videos/${id}/like`);
+    return data as { ok: true };
+  },
+
+  // ---- Comments ----
+  async listComments(id: string, take = 20, skip = 0) {
+    const { data } = await api.get(`/videos/${id}/comments`, { params: { take, skip } });
+    return data as Array<{
+      id: string;
+      text: string;
+      createdAt: string;
+      author: { id: string; username: string; displayName: string; avatarUrl?: string | null };
+    }>;
+  },
+
+  async addComment(id: string, text: string) {
+    const { data } = await api.post(`/videos/${id}/comments`, { text });
+    return data as { id: string };
+  },
+
+  // ---- Quiz (standalone video) ----
+  async getQuiz(id: string) {
+    const { data } = await api.get(`/videos/${id}/quiz`);
+    return data as VideoQuizPublic;
+  },
+
+  async submitQuiz(id: string, answers: { questionId: string; selectedOptionId: string }[]) {
+    const { data } = await api.post(`/videos/${id}/quiz/attempt`, { answers });
+    return data as QuizAttemptResult;
   },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Optional POST-only helper
+/** Courses */
 // ─────────────────────────────────────────────────────────────────────────────
+export const CoursesAPI = {
+  // PUBLIC BROWSE
+  async browse(params: { q?: string; categoryId?: number; take?: number; skip?: number } = {}) {
+    const { data } = await api.get('/courses', { params });
+    return data as Array<{
+      id: string;
+      title: string;
+      description?: string | null;
+      coverImageUrl?: string | null;
+      published: boolean;
+      createdAt: string;
+      author: { id: string; username: string; displayName: string; avatarUrl?: string | null };
+      category: { id: number; name: string; slug: string };
+      _count?: { enrollments?: number };
+    }>;
+  },
+
+  // PUBLIC COURSE DETAILS
+  async getPublic(courseId: string) {
+    const { data } = await api.get(`/courses/${courseId}`);
+    return data as {
+      id: string;
+      title: string;
+      description?: string | null;
+      coverImageUrl?: string | null;
+      published: boolean;
+      createdAt: string;
+      author: { id: string; username: string; displayName: string; avatarUrl?: string | null };
+      category: { id: number; name: string; slug: string };
+      chapters: Array<{
+        id: string;
+        title: string;
+        order: number;
+        sections: Array<{
+          id: string;
+          title: string;
+          order: number;
+          video: {
+            id: string;
+            title: string;
+            description?: string | null;
+            durationSec: number;
+          };
+        }>;
+      }>;
+      quizzes: Array<{ id: string; title: string; courseId: string }>;
+      _count?: { enrollments?: number };
+    };
+  },
+
+  // ENROLL
+  async enroll(courseId: string) {
+    const { data } = await api.post('/courses/enroll', { courseId });
+    return data as {
+      id: string;
+      userId: string;
+      courseId: string;
+      status: 'IN_PROGRESS' | 'COMPLETED';
+      progressPct: number;
+      startedAt?: string;
+      completedAt?: string | null;
+    };
+  },
+
+  // SUBMIT SECTION QUIZ (progress)
+  async submitSectionQuiz(sectionId: string, answers: { questionId: string; selectedOptionId: string }[]) {
+    const { data } = await api.post('/courses/submit-section-quiz', { sectionId, answers });
+    return data as {
+      attemptId: string;
+      score: number;
+      maxScore: number;
+      completedSection: boolean;
+      progressPct: number;
+    };
+  },
+
+  // AUTHORING/MY LIST (unchanged if you already have them)
+  async listMine() {
+    const { data } = await api.get('/courses', { params: { mine: 1 } });
+    return data as any[];
+  },
+  async createCourse(payload: {
+    title: string;
+    categoryId: number;
+    description?: string | null;
+    coverImageUrl?: string | null;
+    published?: boolean;
+  }) {
+    const { data } = await api.post('/courses', payload);
+    return data as { id: string };
+  },
+  async updateCourse(id: string, payload: any) {
+    const { data } = await api.patch(`/courses/${id}`, payload);
+    return data;
+  },
+  async setPublished(id: string, published: boolean) {
+    const { data } = await api.patch(`/courses/${id}/publish`, { published });
+    return data;
+  },
+  async deleteCourse(id: string) {
+    const { data } = await api.delete(`/courses/${id}`);
+    return data;
+  },
+  async addChapter(courseId: string, dto: { title: string; order: number }) {
+    const { data } = await api.post(`/courses/${courseId}/chapters`, dto);
+    return data as { id: string };
+  },
+  async deleteChapter(chapterId: string) {
+    const { data } = await api.delete(`/courses/chapters/${chapterId}`);
+    return data;
+  },
+  async addSection(chapterId: string, dto: { title: string; order: number; videoId: string }) {
+    const { data } = await api.post(`/courses/chapters/${chapterId}/sections`, dto);
+    return data as { id: string };
+  },
+  async deleteSection(sectionId: string) {
+    const { data } = await api.delete(`/courses/sections/${sectionId}`);
+    return data;
+  },
+  async generateFinal(courseId: string, opts?: { count?: number; shuffle?: boolean }) {
+    // backend ignores opts now but keeping shape for future
+    const { data } = await api.post(`/courses/${courseId}/final/generate`, opts ?? {});
+    return data as { finalQuizId: string; questions: number };
+  },
+  async getProgress(courseId: string) {
+    const { data } = await api.get(`/courses/${courseId}/progress/me`);
+    return data as {
+      enrollment: null | {
+        id: string;
+        userId: string;
+        courseId: string;
+        status: 'IN_PROGRESS' | 'COMPLETED';
+        progressPct: number;
+        startedAt?: string;
+        completedAt?: string | null;
+      };
+      sections: Array<{ sectionId: string; completedAt: string | null; score?: number | null; maxScore?: number | null }>;
+    };
+  },
+  async listMyEnrollments() {
+    const { data } = await api.get('/courses/enrollments/me');
+    return data as Array<{
+      id: string;
+      userId: string;
+      courseId: string;
+      status: 'IN_PROGRESS' | 'COMPLETED';
+      progressPct: number;
+      startedAt?: string | null;
+      completedAt?: string | null;
+      course: { id: string; title: string; coverImageUrl?: string | null; category?: { id: number; name: string } | null };
+    }>;
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+/** Feed */
+// ─────────────────────────────────────────────────────────────────────────────
+export type FeedItem = {
+  id: string;
+  title: string;
+  description?: string | null;
+  durationSec: number;
+  category?: { id: number; name: string } | null;
+  author?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null;
+  likesCount?: number;
+  commentsCount?: number;
+  likedByMe?: boolean;
+};
 
 export const FeedAPI = {
   async next(categoryId?: number, exclude?: string) {
@@ -230,19 +450,13 @@ export const FeedAPI = {
     if (categoryId) params.categoryId = categoryId;
     if (exclude) params.exclude = exclude;
     const { data } = await api.get('/feed/next', { params });
-    // { id, title, description, durationSec, category?, author? }
-    return data as {
-      id: string;
-      title: string;
-      description?: string | null;
-      durationSec: number;
-      category?: { id: number; name: string } | null;
-      author?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null;
-    };
+    return data as FeedItem;
   },
 };
 
-
+// ─────────────────────────────────────────────────────────────────────────────
+// S3 form POST helper
+// ─────────────────────────────────────────────────────────────────────────────
 export async function postToS3(url: string, fields: Record<string, string>, file: File) {
   const form = new FormData();
   Object.entries(fields).forEach(([k, v]) => form.append(k, v));
@@ -252,7 +466,7 @@ export async function postToS3(url: string, fields: Record<string, string>, file
     const text = await res.text();
     throw new Error(`S3 upload failed: ${res.status} ${text}`);
   }
-  return { key: fields.key };
+  return { key: (fields as any).key };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
