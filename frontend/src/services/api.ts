@@ -170,6 +170,12 @@ export const VideosAPI = {
     const { data } = await api.get(`/videos/${id}`);
     return data as any;
   },
+  // in services/api.ts inside VideosAPI:
+async delete(id: string) {
+  const { data } = await api.delete(`/videos/${id}`);
+  return data;
+},
+
   async streamUrl(id: string) {
     const { data } = await api.get(`/videos/${id}/stream`);
     return data as { url: string };

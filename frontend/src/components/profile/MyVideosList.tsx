@@ -1,49 +1,98 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// FILE: src/components/profile/MyVideosList.tsx
-// ─────────────────────────────────────────────────────────────────────────────
 import { useEffect, useState } from 'react';
 import {
-  Box, Card, CardContent, CardHeader, Grid, Typography, Chip
+  Alert, Card, CardActions, CardContent, CardHeader, IconButton, Stack, Typography
 } from '@mui/material';
+import Grid from '@mui/material/Grid'; // Grid v2
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import VideoPlayerDialog from '../video/VideoPlayerDialog'; // <-- correct path!
 import { VideosAPI } from '../../services/api';
 
-export default function MyVideosList() {
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+type VideoRow = {
+  id: string;
+  title: string;
+  description?: string | null;
+  durationSec: number;
+  createdAt: string;
+};
 
-  useEffect(()=> {
-    (async ()=>{
+export default function MyVideosList() {
+  const [rows, setRows] = useState<VideoRow[]>([]);
+  const [err, setErr] = useState<string>();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [openTitle, setOpenTitle] = useState<string>('');
+
+  useEffect(() => {
+    (async () => {
       try {
-        const list = await VideosAPI.listMine();
-        setItems(list);
-      } finally {
-        setLoading(false);
+        const data = await VideosAPI.listMine();
+        setRows(data);
+      } catch (e: any) {
+        setErr(e?.response?.data?.message || e.message || 'Failed to load videos');
       }
     })();
   }, []);
 
-  if (loading) return <Typography variant="body2">Loading…</Typography>;
-  if (!items.length) return <Typography variant="body2">No videos yet. Upload your first one!</Typography>;
+  function onPlay(v: VideoRow) {
+    setOpenTitle(v.title);
+    setOpenId(v.id);
+  }
+
+  async function onDelete(id: string) {
+    try {
+      setErr(undefined);
+      if ((VideosAPI as any).delete) {
+        await (VideosAPI as any).delete(id);
+        setRows(prev => prev.filter(r => r.id !== id));
+      }
+    } catch (e: any) {
+      setErr(e?.response?.data?.message || e.message || 'Delete failed');
+    }
+  }
 
   return (
-    <Grid container spacing={2}>
-      {items.map(v => (
-        <Grid item xs={12} sm={6} key={v.id}>
-          <Card variant="outlined">
-            <CardHeader
-              title={v.title}
-              subheader={new Date(v.createdAt).toLocaleString()}
-              action={<Chip size="small" label={v.category?.name || 'Category'} />}
-            />
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">{v.description || '—'}</Typography>
-              <Box sx={{ mt: 1 }}>
-                <Typography variant="caption">Duration: {v.durationSec}s</Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      ))}
-    </Grid>
+    <Stack spacing={2}>
+      <Typography variant="h6">My Videos</Typography>
+      {err && <Alert severity="error">{err}</Alert>}
+
+      <Grid container spacing={2}>
+        {rows.map((v) => (
+          <Grid key={v.id} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Card>
+              <CardHeader
+                title={<Typography noWrap>{v.title}</Typography>}
+                subheader={new Date(v.createdAt).toLocaleString()}
+                sx={{ pb: 0 }}
+              />
+              <CardContent sx={{ pt: 1 }}>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {v.description || ' '}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Duration: {Math.round(v.durationSec)}s
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ justifyContent: 'space-between' }}>
+                <IconButton aria-label="play" onClick={() => onPlay(v)}>
+                  <PlayArrowIcon />
+                </IconButton>
+                <IconButton aria-label="delete" onClick={() => onDelete(v.id)}>
+                  <DeleteOutlineIcon />
+                </IconButton>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <VideoPlayerDialog
+        open={!!openId}
+        videoId={openId}
+        title={openTitle}
+        onClose={() => setOpenId(null)}
+        onOpenComments={(id) => console.log('comments for', id)}
+        onTakeQuiz={(id) => console.log('quiz for', id)}
+      />
+    </Stack>
   );
 }
