@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   TouchableWithoutFeedback,
   ActivityIndicator,
@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,6 +21,8 @@ import Footer from '../src/components/footer';
 
 // Constants
 import { colors, fonts, shadowIntensity } from '../src/constants';
+//will be removed later
+import { commonVideos } from '../src/mockData';
 
 // Icons
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -47,12 +50,18 @@ function Profile() {
   const spacing = 8;
   const itemWidthCreator = (width - spacing * 4) / 3;
 
+  // Report popup state
+  const [isReportPopupVisibleMap, setIsReportPopupVisibleMap] = useState({});
+
   // Videos
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Active tab
   const [activeTab, setActiveTab] = useState('saved');
+
+  // ========== SCROLL ANIMATION REFS ==========
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Require login: if no token, redirect to login
   useEffect(() => {
@@ -142,13 +151,23 @@ function Profile() {
     );
   }
 
-  const userRole = user.role || 'student';
-  const userName = user.name || '';
-  const userBio = user.bio || '';
-  const userSubjects = user.subjects || [];
-  const userProfileImage = user.profileImage || null;
-  const following = user.following || 0;
-  const followers = user.followers || 0;
+  /*  const userRole = user.role || 'student';
+    const userName = user.name || '';
+    const userBio = user.bio || '';
+    const userSubjects = user.subjects || [];
+    const userProfileImage = user.profileImage || null;
+    const following = user.following || 0;
+    const followers = user.followers || 0;*/
+    
+  // TEMPORARY: Sample profile data for visual testing - Remove when implementing real data
+  const userRole = user.role || 'creator';
+  const userName = user.name || 'Dr. Sarah Johnson';
+  const userBio = user.bio || 'Passionate mathematics educator with 8+ years of experience. Specializing in calculus, linear algebra, and mathematical modeling. 📚✨';
+  const userSubjects = user.subjects || ['Mathematics', 'Calculus', 'Linear Algebra', 'Statistics', 'Physics'];
+  // TEMPORARY: Profile image - Using mock data image for visual testing
+  const userProfileImage = user.profileImage || 'https://randomuser.me/api/portraits/women/44.jpg';
+  const following = user.following || 45;
+  const followers = user.followers || 1234;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -160,145 +179,108 @@ function Profile() {
               style={[
                 styles.popupContainer,
                 shadowIntensity.bottomShadow,
-                {
-                  position: 'absolute',
-                  right: width * 0.02,
-                  top: height * 0.05,
-                  zIndex: 1000,
-                },
+                                 {
+                   position: 'absolute',
+                   right: 20,
+                   top: insets.top + 80,
+                   zIndex: 1000,
+                   maxWidth: width * 0.45,
+                   minWidth: 220,
+                 },
               ]}
             >
-              <TouchableOpacity
-                style={[
-                  styles.popupItem,
-                  {
-                    paddingVertical: height * 0.0015,
-                    paddingHorizontal: width * 0.02,
-                    borderRadius: width * 0.025,
-                    marginVertical: height * 0.0002,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name="logout"
-                  size={width * 0.04}
-                  color={colors.iconColor}
-                  style={[styles.popupIcon, { marginRight: width * 0.03 }]}
-                />
-                <Text style={[styles.popupText, { fontSize: width * 0.032, fontWeight: '500' }]}>
-                  Log Out
-                </Text>
-              </TouchableOpacity>
+                             <TouchableOpacity
+                 style={styles.popupItem}
+               >
+                                   <MaterialIcons
+                    name="logout"
+                    size={18}
+                    color={colors.iconColor}
+                    style={styles.popupIcon}
+                  />
+                 <Text style={styles.popupText}>
+                   Log Out
+                 </Text>
+               </TouchableOpacity>
 
-              <View
-                style={[
-                  styles.popupDivider,
-                  { marginVertical: height * 0.01, marginHorizontal: width * 0.02 },
-                ]}
-              />
+                             <View style={styles.popupDivider} />
 
-              <TouchableOpacity
-                style={[
-                  styles.popupItem,
-                  {
-                    paddingVertical: height * 0.0015,
-                    paddingHorizontal: width * 0.02,
-                    borderRadius: width * 0.025,
-                    marginVertical: height * 0.0002,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name="delete-forever"
-                  size={width * 0.04}
-                  color={colors.iconColor}
-                  style={[styles.popupIcon, { marginRight: width * 0.03 }]}
-                />
-                <Text style={[styles.popupText, { fontSize: width * 0.032, fontWeight: '500' }]}>
-                  Delete Account
-                </Text>
-              </TouchableOpacity>
+                             <TouchableOpacity
+                 style={styles.popupItem}
+               >
+                                   <MaterialIcons
+                    name="delete-forever"
+                    size={18}
+                    color={colors.iconColor}
+                    style={styles.popupIcon}
+                  />
+                 <Text style={styles.popupText}>
+                   Delete Account
+                 </Text>
+               </TouchableOpacity>
             </View>
           )}
 
           {/* Profile Header Section */}
-          <View style={[styles.profileHeader, shadowIntensity.bottomShadow]}>
-            <View
-              style={{
-                width: width,
-                flexDirection: 'row',
-                alignItems: 'center',
-                flexShrink: 1,
-                flexGrow: 1,
-                paddingVertical: 3,
-              }}
-            >
+          {/* TEMPORARY: Using sample data for visual testing - Replace with real user data */}
+          <View style={[styles.profileHeader]}>
+            {/* Fixed header row with proper spacing */}
+            <View style={styles.headerRow}>
               {userRole === 'creator' ? (
                 <MaterialCommunityIcons
                   name="account-tie"
                   size={width * 0.044}
-                  style={[
-                    styles.creatorIcon,
-                    { padding: width * 0.005, borderRadius: width * 0.008, marginHorizontal: width * 0.007 },
-                  ]}
+                  style={styles.creatorIcon}
                 />
               ) : (
                 <FontAwesome5
                   name="book-reader"
                   size={width * 0.044}
-                  style={[
-                    styles.studentIcon,
-                    { padding: width * 0.005, borderRadius: width * 0.008, marginHorizontal: width * 0.007 },
-                  ]}
+                  style={styles.studentIcon}
                 />
               )}
-              <Text
-                style={[
-                  styles.headerText,
-                  { fontSize: width * 0.036, marginLeft: width * 0.02, flex: 1 },
-                ]}
-              >
+              <Text style={[styles.headerText, { fontSize: width * 0.048 }]}>
                 {userRole === 'creator' ? 'Educator ' : 'Student '}
                 {userName}
               </Text>
-              <MaterialIcons
-                name="edit-note"
-                size={width * 0.044}
-                style={[styles.editIcon, { right: width * 0.05, marginRight: width * 0.05 }]}
-                onPress={() => router.push('/editProfile')}
-              />
-              <Entypo
-                name="dots-three-vertical"
-                size={width * 0.023}
-                style={[styles.menuIcon, { right: width * 0.02, marginRight: width * 0.02 }]}
-                onPress={() => setIsPopupVisible(true)}
-              />
+              <View style={styles.headerIconsContainer}>
+                <MaterialIcons
+                  name="edit-note"
+                  size={width * 0.044}
+                  style={styles.editIcon}
+                  onPress={() => router.push('/editProfile')}
+                />
+                <Entypo
+                  name="dots-three-vertical"
+                  size={width * 0.044}
+                  style={styles.menuIcon}
+                  onPress={() => setIsPopupVisible(true)}
+                />
+              </View>
             </View>
-
+ 
             <View
               style={[
                 styles.profileMainSection,
                 { marginTop: height * 0.02, paddingHorizontal: width * 0.02 },
               ]}
             >
-              <Image
-                source={{ uri: userProfileImage }}
-                style={[
-                  styles.profileImage,
-                  {
-                    width: width * 0.24,
-                    height: width * 0.24,
-                    borderRadius: width * 0.025,
-                  },
-                ]}
-              />
-
-              <View
-                style={[
-                  styles.verticalLine,
-                  { width: width * 0.003, height: width * 0.2, marginLeft: width * 0.02 },
-                ]}
-              />
+              <View style={styles.profileImageContainer}>           
+                <View style={styles.profileImageBorder} />
+                <Image
+                  source={{ uri: userProfileImage }}
+                  style={[
+                    styles.profileImage,
+                    {
+                      width: width * 0.24,
+                      height: width * 0.24,
+                      borderRadius: (width * 0.24) / 2,
+                    },
+                  ]}
+                  defaultSource={require('../assets/images/icon.png')}
+                  onError={() => console.log('Profile image failed to load')}
+                />
+              </View>
 
               <View
                 style={[
@@ -326,6 +308,7 @@ function Profile() {
               </View>
             </View>
 
+            {/* TEMPORARY: Bio and Subjects Section - Replace with real user data */}
             <View style={{ marginTop: height * 0.015, paddingHorizontal: width * 0.02 }}>
               <Text
                 style={[
@@ -359,44 +342,84 @@ function Profile() {
             {/* Filter Buttons Section */}
             <View style={[styles.filterButtonsContainer, { marginTop: height * 0.005 }]}>
               <TouchableOpacity
-                style={[styles.filterButton, { borderBottomLeftRadius: 25 }]}
+                style={[
+                  styles.filterButton, 
+                  { borderBottomLeftRadius: 25 },
+                  activeTab === 'saved' && styles.activeFilterButton
+                ]}
                 onPress={() => handleTabChange('saved')}
               >
-                <Fontisto name="bookmark" size={width * 0.045} style={{ color: colors.saveColor }} />
-                <Text style={[styles.buttonText, { fontSize: width * 0.03 }]}>saved</Text>
+                <Fontisto 
+                  name="bookmark-alt" 
+                  size={width * 0.045} 
+                  style={{ 
+                    color: '#f59e0b' 
+                  }} 
+                />
+                <Text style={[
+                  styles.buttonText, 
+                  { fontSize: width * 0.03 },
+                  activeTab === 'saved' && styles.activeButtonText
+                ]}>saved</Text>
               </TouchableOpacity>
 
               {userRole === 'creator' && (
-                <TouchableOpacity style={styles.filterButton} onPress={() => handleTabChange('mine')}>
+                <TouchableOpacity 
+                  style={[
+                    styles.filterButton,
+                    activeTab === 'mine' && styles.activeFilterButton
+                  ]} 
+                  onPress={() => handleTabChange('mine')}
+                >
                   <MaterialIcons
                     name="video-library"
                     size={width * 0.045}
-                    style={{ color: 'gray' }}
+                    style={{ 
+                      color: 'gray' 
+                    }}
                   />
-                  <Text style={[styles.buttonText, { fontSize: width * 0.03 }]}>mine</Text>
+                  <Text style={[
+                    styles.buttonText, 
+                    { fontSize: width * 0.03 },
+                    activeTab === 'mine' && styles.activeButtonText
+                  ]}>mine</Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
-                style={[styles.filterButton, { borderBottomRightRadius: 25 }]}
+                style={[
+                  styles.filterButton, 
+                  { borderBottomRightRadius: 25 },
+                  activeTab === 'favorite' && styles.activeFilterButton
+                ]}
                 onPress={() => handleTabChange('favorite')}
               >
-                <AntDesign name="heart" size={width * 0.045} style={{ color: colors.favColor }} />
-                <Text style={[styles.buttonText, { fontSize: width * 0.03 }]}>favorite</Text>
+                <AntDesign 
+                  name="heart" 
+                  size={width * 0.045} 
+                  style={{ 
+                    color: '#ef4444' 
+                  }} 
+                />
+                <Text style={[
+                  styles.buttonText, 
+                  { fontSize: width * 0.03 },
+                  activeTab === 'favorite' && styles.activeButtonText
+                ]}>favorite</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Videos Grid Section */}
           <FlatList
-            data={videos}
+            data={commonVideos}
             renderItem={renderVideoItem}
             keyExtractor={(item) => item.id}
             numColumns={3}
             contentContainerStyle={[
               styles.videosGrid,
               {
-                paddingBottom: insets.bottom + height * 0.02,
+                paddingBottom: insets.bottom + height * 0.04,
                 marginHorizontal: width * 0.02,
                 marginBottom: height * 0.03,
                 marginTop: height * 0.005,
@@ -406,10 +429,10 @@ function Profile() {
             showsVerticalScrollIndicator={false}
           />
 
-          {/* Footer Component */}
-          <Footer />
+         
         </View>
       </TouchableWithoutFeedback>
+      <Footer />
     </SafeAreaView>
   );
 }
@@ -421,42 +444,69 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     backgroundColor: colors.initial,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
-    marginBottom: 5,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    marginBottom: 1,   
+  },
+  // New header row style
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 1,
+  },
+  // Container for header icons
+  headerIconsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   creatorIcon: {
     color: colors.secondary,
-    backgroundColor: 'rgba(250, 13, 13, 0.1)',
-    borderRadius: 5,
-    padding: 1,
-    marginHorizontal: 3,
+    backgroundColor: 'rgba(93, 131, 202, 0.15)',
+    borderRadius: 20,
+    padding: 8,
+    marginRight: 10,
   },
   studentIcon: {
     color: colors.secondary,
-    backgroundColor: 'rgba(250, 13, 13, 0.1)',
-    borderRadius: 5,
-    padding: 1,
-    marginHorizontal: 3,
+    backgroundColor: 'rgba(93, 131, 202, 0.15)',
+    borderRadius: 20,
+    padding: 8,
+    marginRight: 10,
   },
   headerText: {
     color: colors.iconColor,
     fontFamily: fonts.initial,
+    fontWeight: '600',
+    flex: 1,
+    marginLeft: 5,
   },
   menuIcon: {
-    position: 'absolute',
-    right: 10,
-    color: colors.iconColor,
+    color: colors.secondary,
+    backgroundColor: 'rgba(93, 131, 202, 0.15)',
+    borderRadius: 20,
+    padding: 8,
+    marginLeft: 10,
   },
   editIcon: {
-    position: 'absolute',
-    right: 30,
-    color: colors.iconColor,
+    color: colors.secondary,
+    backgroundColor: 'rgba(93, 131, 202, 0.15)',
+    borderRadius: 20,
+    padding: 8,
   },
-  verticalLine: {
-    width: 1,
-    height: 80,
-    backgroundColor: colors.secondary,
+  profileImageContainer: {
+    position: "relative"
+  },
+  profileImageBorder: {
+    position: "absolute",
+    top: -6,
+    left: -6,
+    right: -6,
+    bottom: -6,
+    borderRadius: 100,
+    borderWidth: 3,
+    borderColor: colors.secondary
   },
   profileMainSection: {
     flexDirection: 'row',
@@ -464,77 +514,105 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   profileImage: {
-    shadowColor: '#000000ff',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   profileStatsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
+    backgroundColor: 'rgba(24, 90, 214, 0.08)',
+    borderRadius: 250,
+    marginLeft: 20,
   },
   statRow: {
     alignItems: 'center',
     justifyContent: 'center',
+    marginHorizontal: 15,
   },
   statNumber: {
     fontWeight: 'bold',
     color: colors.iconColor,
     fontFamily: fonts.initial,
+    fontSize: 18,
   },
   statLabel: {
     color: 'rgba(138, 138, 138, 0.9)',
     fontFamily: fonts.initial,
-    marginTop: 2,
+    marginTop: 4,
     alignSelf: 'center',
+    fontSize: 12,
+    fontWeight: '500',
   },
   profileInfoText: {
     color: colors.iconColor,
     fontFamily: fonts.initial,
+    lineHeight: 22,
   },
   subjectsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginTop: 1,
   },
   subjectTag: {
-    backgroundColor: 'rgba(250, 13, 13, 0.1)',
-    borderRadius: 13,
-    padding: 11,
-    marginHorizontal: 3,
-    color: colors.secondary,
-    fontSize: 15,
+    backgroundColor: 'rgba(93, 131, 202, 0.1)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 6,
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(93, 131, 202, 0.2)',
   },
   subjectTagText: {
     color: colors.secondary,
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '500',
   },
   filterButtonsContainer: {
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
     flexDirection: 'row',
     backgroundColor: colors.initial,
+    paddingTop: 8,
+    paddingBottom: 4,
+    shadowColor: '#000000ff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   filterButton: {
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
+    paddingVertical: 10,
+    marginHorizontal: 2,
+    borderRadius: 15,
+    backgroundColor: 'rgba(93, 131, 202, 0.05)',
   },
   buttonText: {
     color: colors.iconColor,
-    margin: 3,
-    paddingBottom: 5,
+    margin: 4,
+    paddingBottom: 2,
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  activeFilterButton: {
+    backgroundColor: 'rgba(93, 131, 202, 0.15)',
+    borderWidth: 1,
+    borderColor: colors.secondary,
+  },
+  activeButtonText: {
+    color: colors.secondary,
+    fontWeight: '600',
   },
   videosGrid: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   videoItem: {
-    height: 230,
+    height: 180,
     backgroundColor: '#ccc',
     borderRadius: 11,
   },
@@ -545,24 +623,48 @@ const styles = StyleSheet.create({
   },
   popupContainer: {
     backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 15,
+    borderRadius: 25,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(93, 131, 202, 0.1)',
   },
   popupItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    marginVertical: 2,
+    backgroundColor: 'rgba(93, 131, 202, 0.02)',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   popupIcon: {
-    opacity: 0.8,
+    opacity: 0.9,
+    marginRight: 12,
   },
   popupText: {
     color: colors.iconColor,
     fontFamily: fonts.initial,
     flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+    flexShrink: 1,
   },
   popupDivider: {
     height: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(93, 131, 202, 0.15)',
+    marginVertical: 8,
+    marginHorizontal: 16,
   },
 });
 

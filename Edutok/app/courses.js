@@ -46,8 +46,10 @@ function Courses() {
     const [isReportPopupVisibleMap, setIsReportPopupVisibleMap] = useState({});
 
     // Layout Calculations
+    const user="creator";//will be fetched from the backend
     const { width, height } = useWindowDimensions();
     const insets = useSafeAreaInsets();
+    const numPadding = user=="creator"? height * 0.06 : height * 0.02;
 
     // Initialize videos from subscribed courses
     useEffect(() => {
@@ -167,8 +169,8 @@ function Courses() {
         const isReportPopupVisible = isReportPopupVisibleMap[id] || false;
 
         return (
-            <SafeAreaView style={{ flex: 1, height: height }}>
-                {/* Video Content with Overlay */}
+            <View style={[styles.videoItem, { height: height }]}>
+                {/* Video Content */}
                 <TouchableOpacity
                     onPress={() => {
                         // Simulate video end after 3 seconds for demo
@@ -181,11 +183,9 @@ function Courses() {
                 >
                     <Image
                         source={{ uri: item.uri }}
-                        style={[styles.thumbnail, { width: width, height: height * 0.97 }]}
-                        resizeMode="cover"
+                        style={[styles.thumbnail, { width: width, height: height }]}
+                        resizeMode="contain"
                     />
-                    {/* Dark overlay for better text readability */}
-                    <View style={[styles.darkOverlay, { width: width, height: height * 0.97 }]} />
                 </TouchableOpacity>
 
                 {/* Modern Course Progress Card */}
@@ -214,10 +214,10 @@ function Courses() {
                 </View>
 
                 {/* Enhanced Video Info Container */}
-                <View style={[styles.videoInfoContainer, { width: width, bottom: insets.bottom + 20 }]}>
+                <View style={[styles.videoInfoContainer, { width: width, bottom: insets.bottom + 80 }]}>
                     {/* Left Side - Video Details */}
-                    <View style={[styles.videoDetails, { minHeight: height * 0.15, width: width * 0.75 }]}>
-                        <View style={styles.creatorRow}>
+                    <View style={[styles.videoDetails, { minHeight: height * 0.15, width: width * 0.8, backgroundColor: 'rgba(0, 0, 0, 0.3)' }]}>
+                        <View style={{ flexDirection: "row", alignItems: "center" }}>   
                             <TouchableOpacity 
                                 onPress={() => router.push({
                                     pathname: 'creatorPage',
@@ -230,27 +230,26 @@ function Courses() {
                                         bio: item.bio
                                     }
                                 })}
-                                style={styles.profileContainer}
                             >
-                                <Image
-                                    source={{ uri: item.profile }}
-                                    style={styles.profileImage}
-                                />
-                                <View style={styles.onlineIndicator} />
+                                <View style={styles.profileContainer}>
+                                    <View style={styles.profileBorder} />
+                                    <Image
+                                        source={{ uri: item.profile }}
+                                        style={styles.profileImage}
+                                    />
+                                </View>
                             </TouchableOpacity>
-                            
-                            <View style={styles.creatorInfo}>
-                                <Text style={styles.creatorText}>{item.creator}</Text>
-                                <TouchableOpacity 
-                                    onPress={() => setFollowedMap(prev => ({ ...prev, [id]: !isFollowed }))}
-                                    style={[styles.followButton, isFollowed ? styles.followingButton : styles.notFollowingButton]}
-                                >
-                                    <Text style={[styles.followButtonText, isFollowed ? styles.followingText : styles.notFollowingText]}>
-                                        {isFollowed ? "Following" : "+ Follow"}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
+                            <TouchableOpacity 
+                                onPress={() => setFollowedMap(prev => ({ ...prev, [id]: !isFollowed }))}
+                                style={[styles.followButton, isFollowed ? styles.followingButton : styles.notFollowingButton]}
+                            >
+                                <Text style={[styles.followButtonText, isFollowed ? styles.followingText : styles.notFollowingText]}>
+                                    {isFollowed ? "Following" : "Follow"}
+                                </Text>
+                            </TouchableOpacity>
                         </View>
+
+                        <Text style={styles.creatorText}>{item.creator}</Text>
 
                         <TouchableOpacity 
                             onPress={() => setExpandMap(prev => ({ ...prev, [id]: !isExpanded }))}
@@ -261,12 +260,10 @@ function Courses() {
                             </Text>
                         </TouchableOpacity>
 
-                        <View style={styles.tagsContainer}>
-                            <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyBadgeStyle(item.difficulty) }]}>
-                                <Text style={styles.difficultyText}>{item.difficulty}</Text>
-                            </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", paddingBottom: 3 }}>
+                            <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyBadgeStyle(item.difficulty) }]}></View>
                             <Text style={styles.tagsText}>
-                                #{item.subject}
+                                {" #" + item.subject}
                             </Text>
                         </View>
                     </View>
@@ -282,13 +279,11 @@ function Courses() {
                             }}
                             activeOpacity={0.7}
                         >
-                            <View style={[styles.actionIconContainer, isLiked && styles.likedContainer]}>
-                                <AntDesign
-                                    name={isLiked ? "heart" : "hearto"}
-                                    size={22}
-                                    color="#ffffff"
-                                />
-                            </View>
+                            <AntDesign
+                                name={isLiked ? "heart" : "hearto"}
+                                size={20}
+                                color={isLiked ? colors.favColor : "white"}
+                            />
                             <Text style={styles.actionCount}>
                                 {handleLikesAndComments(likesCount)}
                             </Text>
@@ -303,13 +298,11 @@ function Courses() {
                             })}
                             activeOpacity={0.7}
                         >
-                            <View style={styles.actionIconContainer}>
-                                <MaterialIcons
-                                    name="school"
-                                    size={22}
-                                    color="#ffffff"
-                                />
-                            </View>
+                            <MaterialIcons
+                                name="school"
+                                size={20}
+                                color="white"
+                            />
                             <Text style={styles.actionCount}>Course</Text>
                         </TouchableOpacity>
 
@@ -319,13 +312,11 @@ function Courses() {
                             onPress={() => setSavedMap(prev => ({ ...prev, [id]: !isSaved }))}
                             activeOpacity={0.7}
                         >
-                            <View style={[styles.actionIconContainer, isSaved && styles.savedContainer]}>
-                                <Fontisto
-                                    name={isSaved ? "bookmark-alt" : "bookmark"}
-                                    size={20}
-                                    color="#ffffff"
-                                />
-                            </View>
+                            <Fontisto
+                                name={isSaved ? "bookmark-alt" : "bookmark"}
+                                size={20}
+                                color={isSaved ? colors.saveColor : "white"}
+                            />
                         </TouchableOpacity>
 
                         {/* Report Button */}
@@ -334,13 +325,11 @@ function Courses() {
                             onPress={() => setIsReportPopupVisibleMap(prev => ({ ...prev, [id]: !isReportPopupVisible }))}
                             activeOpacity={0.7}
                         >
-                            <View style={styles.actionIconContainer}>
-                                <MaterialIcons
-                                    name="report-gmailerrorred"
-                                    size={22}
-                                    color="#ffffff"
-                                />
-                            </View>
+                            <MaterialIcons
+                                name="report-gmailerrorred"
+                                size={24}
+                                color="white"
+                            />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -352,7 +341,7 @@ function Courses() {
                         onClose={() => setIsReportPopupVisibleMap(prev => ({ ...prev, [id]: false }))}
                     />
                 )}
-            </SafeAreaView>
+            </View>
         );
     };
 
@@ -377,13 +366,18 @@ function Courses() {
                     maxToRenderPerBatch={2}
                     initialNumToRender={1}
                     windowSize={3}
+                    getItemLayout={(data, index) => ({
+                        length: height,
+                        offset: height * index,
+                        index,
+                    })}
                 />
 
                 {/* Modern Header */}
                 <View style={styles.header}>
                     <View style={styles.headerContent}>
                         <View style={styles.titleContainer}>
-                            <Ionicons name="library" size={20} color="#ffffff" />
+                            <Ionicons name="library" size={20} color="#ffffff"  style={{alignSelf:"center"}}/>
                             <Text style={styles.title}>My Courses</Text>
                         </View>
                     </View>
@@ -496,33 +490,33 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#000000',
     },
-    videoContainer: {
+    videoItem: {
+        width: '100%',
         position: 'relative',
     },
-    videoList: {
-        height: '100%',
-    },
-    thumbnail: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 0,
-        resizeMode: 'cover',
-    },
-    darkOverlay: {
+    videoContainer: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    videoList: {
+        flex: 1,
+    },
+    thumbnail: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'contain',
     },
     courseProgressCard: {
         position: 'absolute',
-        top: 70,
+        top: 40,
         left: 15,
-        backgroundColor: 'rgba(99, 102, 241, 0.95)',
+        marginTop:3,
+        backgroundColor: colors.secondary,
         borderRadius: 16,
-        padding: 16,
+        padding: 14,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
@@ -582,41 +576,42 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         position: 'absolute',
         bottom: 0,
-        left: 15,
+        left: 11,
         justifyContent: 'space-between',
-        paddingRight: 15,
+        zIndex: 1000,
     },
-     videoDetails: {
-        paddingVertical: 12,
-        paddingHorizontal: 12,
+    videoDetails: {
+        paddingTop: 4,
+        paddingLeft: 11,
         flexDirection: 'column',
-        borderRadius: 16,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        borderRadius: 11,
+        marginRight: 10,
+        width: '80%',
+        justifyContent: 'space-evenly',
+        zIndex: 1000,
     },
-    creatorRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 8,
-    },
+
     profileContainer: {
         position: 'relative',
+        width: 52,
+        height: 52,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-   profileImage: {
+    profileBorder: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderRadius: 26,
+        borderWidth: 3,
+        borderColor: colors.secondary,
+    },
+    profileImage: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        borderWidth: 2,
-        borderColor: '#ffffff',
-    },
-    onlineIndicator: {
-        position: 'absolute',
-        bottom: 1,
-        right: 1,
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: '#10b981',
         borderWidth: 2,
         borderColor: '#ffffff',
     },
@@ -625,10 +620,11 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     creatorText: {
-        color: '#ffffff',
-        fontSize: 14,
-        fontWeight: '700',
-        fontFamily: fonts.initial,
+        color: 'white',
+        fontSize: 11,
+        fontWeight: "600",
+        marginTop: 4,
+        marginBottom: 2,
     },
     followButton: {
         paddingHorizontal: 12,
@@ -637,9 +633,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         minWidth: 70,
+        marginHorizontal: 20,
     },
     notFollowingButton: {
-        backgroundColor: '#6366f1',
+        backgroundColor: colors.secondary,
     },
     followingButton: {
         backgroundColor: 'transparent',
@@ -650,6 +647,7 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontFamily: fonts.initial,
         fontWeight: '700',
+        marginHorizontal: 40,
     },
     notFollowingText: {
         color: '#ffffff',
@@ -658,103 +656,70 @@ const styles = StyleSheet.create({
         color: '#ffffff',
     },
     descriptionText: {
-        color: '#ffffff',
-        fontSize: 13,
-        fontWeight: '500',
-        lineHeight: 18,
-        fontFamily: fonts.initial,
+        color: 'white',
+        paddingRight: 5,
+        fontSize: 15,
+        fontWeight: "500",
+        lineHeight: 20,
         marginBottom: 8,
     },
-    tagsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
+
     difficultyBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    difficultyText: {
-        color: '#ffffff',
-        fontSize: 9,
-        fontWeight: '800',
-        fontFamily: fonts.initial,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        width: 10,
+        height: 10,
+        borderRadius: 13,
     },
     tagsText: {
-        color: '#ffffff',
-        fontSize: 11,
-        fontWeight: '600',
-        fontFamily: fonts.initial,
+        color: '#efefefff',
+        fontSize: 12,
+        flexWrap: 'wrap',
+        fontWeight: "400",
     },
     actionBar: {
         flexDirection: 'column',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 20,
-        paddingVertical: 16,
+        alignSelf: 'flex-end',
+        paddingHorizontal: 5,
+        marginRight: 20,
+        zIndex: 1000,
     },
     actionButton: {
+        marginTop: 35,
         alignItems: 'center',
-        gap: 6,
-    },
-    actionIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: 'rgba(255, 255, 255, 0.25)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: 'rgba(255, 255, 255, 0.3)',
-    },
-    likedContainer: {
-        backgroundColor: '#ef4444',
-        borderColor: '#ef4444',
-    },
-    savedContainer: {
-        backgroundColor: '#f59e0b',
-        borderColor: '#f59e0b',
     },
     actionCount: {
-        color: '#ffffff',
+        color: "white",
         fontFamily: fonts.initial,
         fontSize: 11,
-        fontWeight: '700',
-        textAlign: 'center',
-        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
+        fontWeight: "500",
+        
+        paddingTop: 10,
     },
-     header: {
+    header: {
         position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
+        flexDirection: 'row',
         zIndex: 200,
-        paddingTop: 45,
-        paddingBottom: 8,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        paddingVertical: 1,
+        paddingHorizontal: 6,
+        justifyContent: 'space-between',
+        width: '100%',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
     },
-   headerContent: {
-        paddingHorizontal: 16,
+    headerContent: {
+        paddingHorizontal: 9,
     },
-     titleContainer: {
+    titleContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
     },
-     title: {
-        fontSize: 16,
+    title: {
+        fontSize: 19,
         color: '#ffffff',
         fontFamily: fonts.initial,
-        fontWeight: '800',
-        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 3,
+        fontWeight: '600',
+        alignSelf:"flex-start"
     },
     // Enhanced Quiz Modal Styles (Mobile-Friendly)
     quizModalOverlay: {

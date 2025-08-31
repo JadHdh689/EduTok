@@ -26,6 +26,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AntDesign from '@expo/vector-icons/AntDesign';
 
+// Components  
+import Report from '../src/components/Report';
+
 // Mock Comments Data - Import from mockData.js
 import { mockComments, mockReplies } from '../src/mockData';
 
@@ -42,7 +45,10 @@ function Comments({ visible, onClose, videoBackground }) {
   const [expandedCommentId, setExpandedCommentId] = useState(null);
   const [replies, setReplies] = useState({});
   const [replyTexts, setReplyTexts] = useState({}); // Store reply text for each comment
-  
+
+  // Report popup state
+  const [isReportPopupVisibleMap, setIsReportPopupVisibleMap] = useState({});
+
   // Refs
   const textInputRef = useRef(null);
   const keyboardHeight = useRef(0);
@@ -292,6 +298,7 @@ function Comments({ visible, onClose, videoBackground }) {
   // Reply Item Renderer
   const renderReply = ({ item }) => {
     const isLiked = likedComments[item.id] || false;
+    const isReportVisible = isReportPopupVisibleMap[item.id] || false;
 
     return (
       <View style={styles.replyItem}>
@@ -303,6 +310,17 @@ function Comments({ visible, onClose, videoBackground }) {
             <Text style={styles.username}>{item.user}</Text>
             <Text style={styles.timestamp}>{item.timestamp}</Text>
           </View>
+          {/* Report Button for Reply */}
+          <TouchableOpacity
+            style={styles.reportButton}
+            onPress={() => setIsReportPopupVisibleMap(prev => ({ ...prev, [item.id]: !isReportVisible }))}
+          >
+            <MaterialIcons 
+              name="report-gmailerrorred" 
+              size={14} 
+              color={colors.iconColor} 
+            />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.replyText}>{item.comment}</Text>
@@ -332,6 +350,7 @@ function Comments({ visible, onClose, videoBackground }) {
     const isExpanded = expandedCommentId === item.id;
     const commentReplies = replies[item.id] || [];
     const replyText = replyTexts[item.id] || '';
+    const isReportVisible = isReportPopupVisibleMap[item.id] || false;
 
     return (
       <View>
@@ -344,6 +363,17 @@ function Comments({ visible, onClose, videoBackground }) {
               <Text style={styles.username}>{item.user}</Text>
               <Text style={styles.timestamp}>{item.timestamp}</Text>
             </View>
+            {/* Report Button */}
+            <TouchableOpacity
+              style={styles.reportButton}
+              onPress={() => setIsReportPopupVisibleMap(prev => ({ ...prev, [item.id]: !isReportVisible }))}
+            >
+              <MaterialIcons 
+                name="report-gmailerrorred" 
+                size={16} 
+                color={colors.iconColor} 
+              />
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.commentText}>{item.comment}</Text>
@@ -382,6 +412,7 @@ function Comments({ visible, onClose, videoBackground }) {
               </TouchableOpacity>
             )}
           </View>
+
         </View>
 
         {/* Replies Section */}
@@ -546,11 +577,25 @@ function Comments({ visible, onClose, videoBackground }) {
               </Animated.View>
             </KeyboardAvoidingView>
           </SafeAreaView>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-}
+                 </Animated.View>
+       </View>
+
+       {/* Report Popup - Full Screen Overlay */}
+       {Object.keys(isReportPopupVisibleMap).map(commentId => {
+         if (isReportPopupVisibleMap[commentId]) {
+           return (
+             <Report
+               key={commentId}
+               isVisible={true}
+               onClose={() => setIsReportPopupVisibleMap(prev => ({ ...prev, [commentId]: false }))}
+             />
+           );
+         }
+         return null;
+       })}
+     </Modal>
+   );
+ }
 
 const styles = StyleSheet.create({
   modalContainer: {
@@ -793,6 +838,13 @@ const styles = StyleSheet.create({
   sendButtonActive: {
     backgroundColor: colors.secondary,
     borderRadius: 15,
+  },
+  reportButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(93, 131, 202, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

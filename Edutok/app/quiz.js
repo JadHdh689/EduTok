@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { commonVideos } from '../src/mockData';
@@ -79,6 +79,12 @@ export default function Quiz() {
 
   const handleSubmit = () => {
     if (questions.length > 0) {
+      // Check if user has answered at least one question
+      if (Object.keys(answerMap).length === 0) {
+        Alert.alert("Please answer at least one question before submitting");
+        return;
+      }
+      
       const results = {};
       let correctCount = 0;
       
@@ -99,12 +105,8 @@ export default function Quiz() {
       setQuestionResults(results);
       setSubmitted(true);
 
-      // Show score alert
-      Alert.alert(
-        "Quiz Results",
-        `You scored ${correctCount}/${questions.length} (${Math.round((correctCount/questions.length) * 100)}%)`,
-        [{ text: "OK" }]
-      );
+    
+     
     } else {
       Alert.alert('No Questions', 'There are no questions available for this content.');
     }
@@ -146,6 +148,7 @@ export default function Quiz() {
       >
         <View style={styles.content}>
           <Text style={styles.title}>{title}</Text>
+          <Text style={styles.titlesub}>Test Your Knowledge!</Text>
           
           {submitted && (
             <View style={styles.scoreContainer}>
@@ -180,12 +183,10 @@ export default function Quiz() {
                   <View style={styles.resultContainer}>
                     {questionResults[question.question].correct ? (
                       <View style={styles.correctAnswerContainer}>
-                        <Ionicons name="checkmark-circle" size={20} color="#10b981" />
                         <Text style={styles.correctText}>Correct!</Text>
                       </View>
                     ) : (
                       <View style={styles.incorrectAnswerContainer}>
-                        <Ionicons name="close-circle" size={20} color="#ef4444" />
                         <Text style={styles.incorrectText}>
                           Your answer: {questionResults[question.question].userAnswer || "Not answered"}
                         </Text>
@@ -211,13 +212,14 @@ export default function Quiz() {
           {questions.length > 0 && (
             <TouchableOpacity
               style={[styles.submitButton, submitted && styles.retakeButton]}
-              onPress={submitted ? () => {
-                setAnswerMap({});
-                setQuestionResults({});
-                setSubmitted(false);
-              } : handleSubmit}
+                             onPress={submitted ? () => {
+                 setAnswerMap({});
+                 setQuestionResults({});
+                 setSubmitted(false);
+               } : handleSubmit}
               disabled={submitted && Object.keys(answerMap).length === 0}
             >
+              
               <Text style={styles.submitText}>
                 {submitted ? 'Retake Quiz' : 'Submit Answers'}
               </Text>
@@ -259,7 +261,15 @@ const styles = StyleSheet.create({
     color: colors.iconColor,
     fontFamily: fonts.initial,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 15,
+  },
+  titlesub:{
+    fontSize: 19,
+    fontWeight: 'bold',
+    color: "grey",
+    fontFamily: fonts.initial,
+    textAlign: 'center',
+    marginBottom: 17,
   },
   content: {
     flex: 1,

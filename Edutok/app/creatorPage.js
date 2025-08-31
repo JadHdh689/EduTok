@@ -12,7 +12,6 @@ import {colors, fonts,shadowIntensity} from '../src/constants';
 // Icons
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
-
 // Mock Data - Will be replaced with API calls
 import { commonVideos} from '../src/mockData';
 
@@ -41,7 +40,6 @@ function CreatorPage() {
     //for navigation
      const router = useRouter();
 
-
     const handleVideoPress = (selectedVideo) => {
         const videoIndex = videos.findIndex(video => video.id === selectedVideo.id);
         router.push({
@@ -49,7 +47,7 @@ function CreatorPage() {
             params: { 
                 initialIndex: videoIndex,
                 videoList: 'profile',
-                profileTab: tab
+                profileTab: 'mine'
             }
         });
     };
@@ -62,76 +60,48 @@ function CreatorPage() {
                 { 
                     width: itemWidthCreator, 
                     height: height * 0.25,
-                    margin: width * 0.001,
-                    borderRadius: width * 0.011,
-                    margin:spacing,
+                    margin: spacing / 2,
+                    borderRadius: 11,
                 }
             ]}
                 onPress={() => handleVideoPress(item)}
         >
-            <Image source={{ uri: item.uri }} style={[styles.thumbnail, {
-                borderRadius: width * 0.011
-            }]} />
+            <Image source={{ uri: item.uri }} style={styles.thumbnail} />
         </TouchableOpacity>
     );
 
     return (
         <SafeAreaView style={styles.container}>
             {/* Profile Header Section */}
-            <View style={[styles.profileHeader,shadowIntensity.bottomShadow, {
-                borderBottomLeftRadius: 25,
-                borderBottomRightRadius:25,
-                marginBottom:height*0.01,
-            }]}>
-                <View style={{
-                    width: width,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                   flexShrink: 1, flexGrow: 1, 
-                   paddingVertical:3,
-                 
-                   
-                }}>  
+            <View style={[styles.profileHeader, shadowIntensity.bottomShadow]}>
+                {/* Header Row */}
+                <View style={styles.headerRow}>
                     <MaterialCommunityIcons 
                         name="account-tie" 
                         size={width*0.044} 
-                        style={[styles.creatorIcon,{ 
-                            padding: width*0.005,
-                            borderRadius: width*0.008,
-                            marginHorizontal: width*0.007
-                        }]} 
+                        style={styles.creatorIcon}
                     />
-                    <Text style={[styles.headerText,{
-                        fontSize: width * 0.036,
-                        marginLeft: width * 0.02,
-                        flex: 1
-                    }]}>
+                    <Text style={[styles.headerText, { fontSize: width * 0.048 }]}>
                         Educator {creator}
                     </Text>
                 </View>
+
+                {/* Profile Main Section */}
                 <View style={[styles.profileMainSection, {
-                    marginTop:  height* 0.02,
+                    marginTop: height * 0.02,
                     paddingHorizontal: width * 0.02
                 }]}>
-                    <Image 
-                        source={{ uri:profile }} 
-                        style={[styles.profileImage, {
-                            width: width * 0.24,
-                            height: width * 0.24,
-                            borderRadius: width * 0.025,
-                            shadowOffset: {
-                                width: 0,
-                                height: height * 0.005,
-                            },
-                            shadowRadius: width * 0.02
-                        }]}
-                    />
-                    
-                    <View style={[styles.verticalLine, {
-                        width: width * 0.003,
-                        height: height * 0.1,
-                        marginLeft: width * 0.02
-                    }]}/>
+                    <View style={styles.profileImageContainer}>
+                        <View style={styles.profileImageBorder} />
+                        <Image 
+                            source={{ uri: profile }} 
+                            style={[styles.profileImage, {
+                                width: width * 0.24,
+                                height: width * 0.24,
+                                borderRadius: (width * 0.24) / 2,
+                            }]}
+                        />
+                    </View>
                     
                     <View style={[styles.profileStatsContainer, {
                         paddingHorizontal: width * 0.15,
@@ -159,7 +129,9 @@ function CreatorPage() {
                         </View>
                     </View>
                 </View>
-                <View style={ {
+
+                {/* Bio Section */}
+                <View style={{
                     marginTop: height * 0.015,
                     paddingHorizontal: width * 0.02
                 }}>
@@ -168,32 +140,29 @@ function CreatorPage() {
                         marginBottom: height * 0.005,
                         lineHeight: width * 0.035
                     }]}>{bio}</Text>
-                      {/* Filter Buttons Section */}
-            <View style={[styles.filterButtonsContainer, {
-                marginTop: height * 0.015,
-               
-            }]}>
-                <TouchableOpacity 
-                onPress={()=>{
-                    setFollow(!follow);
-                }} style={{backgroundColor:colors.secondary,
-                    borderBottomLeftRadius:25,
-                    borderBottomRightRadius:25,
-                    width:width,
-                }}>
-                    <Text style={[styles.buttonText, {
-                        alignSelf:"center",
-                        margin: width * 0.003,
-                        padding: height * 0.005,
-                        fontSize:height*0.025,
-                    }]}>{follow?"unfollow":"follow"}</Text>
-                </TouchableOpacity>
-                
-            </View>
+                </View>
+
+                {/* Follow Button Section */}
+                <View style={[styles.filterButtonsContainer, {
+                    marginTop: height * 0.005
+                }]}>
+                    <TouchableOpacity 
+                        onPress={() => {
+                            setFollow(!follow);
+                        }} 
+                        style={[styles.followButton, {
+                            backgroundColor: follow ? 'rgba(93, 131, 202, 0.15)' : colors.secondary,
+                            borderColor: follow ? colors.secondary : 'transparent',
+                            borderWidth: follow ? 1 : 0,
+                        }]}
+                    >
+                        <Text style={[styles.followButtonText, {
+                            color: follow ? colors.secondary : colors.initial,
+                            fontSize: height * 0.025,
+                        }]}>{follow ? "Unfollow" : "Follow"}</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
-            
-          
             
             {/* Videos Grid Section */}
             <FlatList
@@ -203,12 +172,16 @@ function CreatorPage() {
                 numColumns={3}
                 contentContainerStyle={[
                     styles.videosGrid, 
-                    {paddingHorizontal: width * 0.001},
-                    { paddingBottom: insets.bottom + height * 0.01 },
+                    {
+                        paddingBottom: insets.bottom + height * 0.04,
+                        marginHorizontal: width * 0.02,
+                        marginBottom: height * 0.03,
+                        marginTop: height * 0.005,
+                    }
                 ]}
                 style={[
                     { height: height * 0.5 }, 
-                    { paddingBottom: insets.bottom },
+                    { paddingBottom: insets.bottom }
                 ]}
                 showsVerticalScrollIndicator={false}
             />
@@ -225,94 +198,122 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.screenColor,
     },
-        profileHeader: {
+    profileHeader: {
         backgroundColor: colors.initial,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        marginBottom: 1,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 1,
     },
     creatorIcon: {
         color: colors.secondary,
-        backgroundColor: 'rgba(250, 13, 13, 0.1)',
+        backgroundColor: 'rgba(93, 131, 202, 0.15)',
+        borderRadius: 20,
+        padding: 8,
+        marginRight: 10,
     },
-
     headerText: {
         color: colors.iconColor,
         fontFamily: fonts.initial,
+        fontWeight: '600',
+        flex: 1,
+        marginLeft: 5,
     },
-    
+    profileImageContainer: {
+        position: "relative"
+    },
+    profileImageBorder: {
+        position: "absolute",
+        top: -6,
+        left: -6,
+        right: -6,
+        bottom: -6,
+        borderRadius: 100,
+        borderWidth: 3,
+        borderColor: colors.secondary
+    },
     profileMainSection: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    
     profileImage: {
-        shadowColor: '#000000ff',
-        shadowOffset: {
-            width: 0,
-        },
-        shadowOpacity: 0.3,
-        elevation: 8,
+        borderWidth: 1,
+        borderColor: "transparent",
     },
-    
-    verticalLine: {
-        backgroundColor: colors.secondary,
-    },
-    
     profileStatsContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around',
+        backgroundColor: 'rgba(24, 90, 214, 0.08)',
+        borderRadius: 250,
+        marginLeft: 20,
     },
-    
     statRow: {
         alignItems: 'center',
         justifyContent: 'center',
+        marginHorizontal: 15,
     },
-    
     statNumber: {
         fontWeight: 'bold',
         color: colors.iconColor,
         fontFamily: fonts.initial,
+        fontSize: 18,
     },
-    
     statLabel: {
-        color: 'rgba(118, 118, 118, 0.9)',
+        color: 'rgba(138, 138, 138, 0.9)',
         fontFamily: fonts.initial,
-        alignSelf: "center"
+        marginTop: 4,
+        alignSelf: "center",
+        fontSize: 12,
+        fontWeight: '500',
     },
-
     profileInfoText: {
         color: colors.iconColor,
         fontFamily: fonts.initial,
+        lineHeight: 22,
     },
     filterButtonsContainer: {
-        alignSelf: 'center',
-        justifyContent: 'space-between',
-        flexDirection: 'row',
-    },
-    filterButton: {
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
         backgroundColor: colors.initial,
-        borderWidth: 1,
-        borderColor: colors.iconColor,
-        alignItems: 'center',
-        flex: 1,
-        flexDirection: 'row',
-        justifyContent: 'center',
+        paddingTop: 8,
+        paddingBottom: 4,
+        shadowColor: '#000000ff',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    buttonText: {
-        color: colors.initial,
+    followButton: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        marginHorizontal: 20,
+        borderRadius: 25,
+        marginBottom: 8,
+    },
+    followButtonText: {
+        fontFamily: fonts.initial,
+        fontWeight: '600',
     },
     videosGrid: {
-        alignItems: 'flex-start', 
-        marginVertical: 0,
+        alignItems: 'flex-start',
     },
     videoItem: {
         backgroundColor: '#ccc',
+        borderRadius: 11,
     },
     thumbnail: {
         width: '100%',
         height: '100%',
+        borderRadius: 11,
     },
-
 });
 
 export default CreatorPage;

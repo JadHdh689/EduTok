@@ -79,7 +79,6 @@ function Search() {
                 {/* Course Stats */}
                 <View style={styles.courseStats}>
                     <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyBadgeStyle(item.difficulty) }]}>
-                        <Text style={styles.difficultyText}>{item.difficulty}</Text>
                     </View>
                     <Text style={styles.courseStatsText}>
                         {item.totalChapters} chapters • {item.enrolledStudents} students
@@ -111,18 +110,21 @@ function Search() {
         ]}>
             <Image source={{ uri: item.uri }} style={styles.thumbnail} />
             
-            {/* Difficulty/Subject Badge */}
-            <View style={[styles.badgeBox, { backgroundColor: getDifficultyBadgeStyle(item.difficulty) }]}>
-                <Text style={[styles.badgeText, { textShadowColor: getDifficultyBadgeStyle(item.difficulty) }]}>
-                    {item.subject || "N/A"}
-                </Text>
-            </View>
+        
 
             {/* Video Info */}
             <View style={styles.videoInfo}>
-                <Text style={styles.creatorName} numberOfLines={1}>
-                    {item.creator}
-                </Text>
+                <View style={styles.creatorRow}>
+                    <Text style={styles.creatorName} numberOfLines={1}>
+                        {item.creator}
+                    </Text>
+                    {/* Difficulty/Subject Badge */}
+                    <View style={[styles.badgeBox, { backgroundColor: getDifficultyBadgeStyle(item.difficulty) }]}>
+                        <Text style={styles.badgeText}>
+                            {item.subject || "N/A"}
+                        </Text>
+                    </View>
+                </View>
                 <Text style={styles.videoDescription} numberOfLines={2}>
                     {item.description}
                 </Text>
@@ -314,10 +316,12 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     courseThumbnail: {
-        width: 80,
-        height: 80,
+        width: 110,
+        height:'100%',
         borderRadius: 8,
         marginRight: 12,
+        resizeMode:'cover',
+        alignSelf:'center'
     },
     courseInfo: {
         flex: 1,
@@ -352,13 +356,9 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
         borderRadius: 4,
         marginRight: 8,
-    },
-    difficultyText: {
-        color: 'white',
-        fontSize: 10,
-        fontFamily: fonts.initial,
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
+        width:15,
+        height:15,
+        borderRadius:20,
     },
     courseStatsText: {
         fontSize: 10,
@@ -392,10 +392,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
     },
     videoItem: {
-        height: 200,
-        backgroundColor: '#ccc',
+        height: 250,
+        backgroundColor: '#ffffffff',
         borderRadius: 11,
         overflow: 'hidden',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 8,
     },
     thumbnail: {
         width: '100%',
@@ -404,39 +409,45 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 11,
     },
     badgeBox: {
-        position: 'absolute',
-        top: 5,
-        left: 5,
         paddingHorizontal: 6,
         paddingVertical: 3,
         borderRadius: 9,
         minWidth: 40,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     badgeText: {
         color: 'white',
         fontSize: 8,
         fontFamily: fonts.initial,
         textTransform: 'uppercase',
-        textShadowOffset: { width: 0.5, height: 0.5 },
-        textShadowRadius: 0.5,
+        fontWeight: '600',
     },
     videoInfo: {
-        padding: 8,
+        paddingBottom: 16,
         height: '30%',
+        padding: 8,
         justifyContent: 'space-between',
+    },
+    creatorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
     },
     creatorName: {
         fontSize: 12,
         fontFamily: fonts.initial,
         color: colors.iconColor,
         fontWeight: 'bold',
+        flex: 1,
+        marginRight: 8,
     },
     videoDescription: {
         fontSize: 10,
         fontFamily: fonts.initial,
-        color: 'gray',
-        marginTop: 2,
+        color: 'black',
+        marginBottom: 8,
     },
 });
 
