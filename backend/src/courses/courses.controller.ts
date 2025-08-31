@@ -103,9 +103,10 @@ export class CoursesController {
 
   // Optional: generate a final exam from all section quizzes
   @Post(':courseId/final/generate')
-  generateFinal(@Req() req: any, @Param('courseId') courseId: string) {
-    return this.courses.generateFinalFromSections(courseId, req.auth.sub);
-  }
+generateFinal(@Req() req: any, @Param('courseId') courseId: string, @Body() body: { count?: number; shuffle?: boolean }) {
+  return this.courses.generateFinalFromSections(courseId, req.auth.sub, body?.count, body?.shuffle ?? true);
+}
+
 
   // ===== Learning flow =====
   @Post('enroll')

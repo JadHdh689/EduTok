@@ -61,28 +61,37 @@ export class VideosService {
     });
   }
 
-  async getById(id: string, authSub: string) {
-    // Also mark as seen for general feed anti-repeat
-    const user = await this.prisma.user.findUnique({ where: { authSub } });
+  async getById(id: string, authSub?: string | null) {
+    const me = authSub ? await this.prisma.user.findUnique({ where: { authSub } }) : null;
+
     const video = await this.prisma.video.findUnique({
       where: { id },
       include: {
-        author: true,
-        category: true,
-        _count: { select: { likes: true, comments: true } }, // counts for UI
+        author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+        category: { select: { id: true, name: true } },
       },
     });
     if (!video) throw new NotFoundException('Video not found');
 
-    if (user) {
-      await this.prisma.userVideoSeen.upsert({
-        where: { userId_videoId: { userId: user.id, videoId: video.id } },
-        update: {},
-        create: { userId: user.id, videoId: video.id },
-      });
-    }
+    const [likesCount, commentsCount, likedByMe] = await Promise.all([
+      this.prisma.videoLike.count({ where: { videoId: id } }),
+      this.prisma.videoComment.count({ where: { videoId: id } }),
+      me
+        ? this.prisma.videoLike
+            .findUnique({
+              where: { userId_videoId: { userId: me.id, videoId: id } },
+              select: { id: true },
+            })
+            .then(Boolean)
+        : Promise.resolve(false),
+    ]);
 
-    return video;
+    return {
+      ...video,
+      likesCount,
+      commentsCount,
+      likedByMe,
+    };
   }
 
   async listMine(authorAuthSub: string, take = 20, skip = 0) {
@@ -90,12 +99,12 @@ export class VideosService {
     if (!me) throw new NotFoundException('User not found');
     return this.prisma.video.findMany({
       where: { authorId: me.id },
-      orderBy: { createdAt: 'asc' }, // 'desc' also fine—pick your UI sort
+      orderBy: { createdAt: 'asc' },
       take,
       skip,
       include: {
         category: { select: { id: true, name: true } },
-        _count: { select: { likes: true, comments: true } }, // counts for UI
+        _count: { select: { likes: true, comments: true } },
       },
     });
   }
@@ -113,12 +122,8 @@ export class VideosService {
   }
 
   async getStreamUrlById(videoId: string, authSub: string) {
-    const me = await this.prisma.user.findUnique({ where: { authSub } });
     const v = await this.prisma.video.findUnique({ where: { id: videoId } });
     if (!v) throw new NotFoundException('Video not found');
-
-    // Example rule: allow anyone since visibility is PUBLIC; otherwise ensure author
-    // if (v.visibility !== 'PUBLIC' && v.authorId !== me?.id) throw new BadRequestException('Forbidden');
 
     const cmd = new GetObjectCommand({ Bucket: v.s3Bucket, Key: v.s3Key });
     const url = await getSignedUrl(this.s3 as any, cmd, { expiresIn: 900 });
@@ -155,15 +160,24 @@ export class VideosService {
   async like(authSub: string, videoId: string) {
     const me = await this.prisma.user.findUnique({ where: { authSub } });
     if (!me) throw new NotFoundException('User not found');
-    await this.prisma.videoLike.create({ data: { userId: me.id, videoId } });
-    return { ok: true };
+
+    await this.prisma.videoLike.upsert({
+      where: { userId_videoId: { userId: me.id, videoId } },
+      update: {},
+      create: { userId: me.id, videoId },
+    });
+
+    const likesCount = await this.prisma.videoLike.count({ where: { videoId } });
+    return { ok: true, likesCount, likedByMe: true };
   }
 
   async unlike(authSub: string, videoId: string) {
     const me = await this.prisma.user.findUnique({ where: { authSub } });
     if (!me) throw new NotFoundException('User not found');
-    await this.prisma.videoLike.delete({ where: { userId_videoId: { userId: me.id, videoId } } });
-    return { ok: true };
+
+    await this.prisma.videoLike.deleteMany({ where: { userId: me.id, videoId } });
+    const likesCount = await this.prisma.videoLike.count({ where: { videoId } });
+    return { ok: true, likesCount, likedByMe: false };
   }
 
   async listComments(videoId: string, take = 20, skip = 0) {
@@ -193,94 +207,129 @@ export class VideosService {
     return { ok: true };
   }
 
-  /** Return a video's quiz with options but without isCorrect flags */
-  async getVideoQuizPublic(videoId: string) {
-    const v = await this.prisma.video.findUnique({
-      where: { id: videoId },
-      include: {
-        quiz: {
-          include: {
-            questions: {
-              orderBy: { order: 'asc' },
-              include: { options: { select: { id: true, text: true } } }, // hide isCorrect
-            },
+  /**
+   * Return a video's quiz with options but without isCorrect flags.
+   * Backward compatible:
+   * - `section`: first section (if any) using this video (so old frontends still branch)
+   * - `sectionsCount`: total # of sections referencing this video
+   */
+/** Return a video's quiz with options but without isCorrect flags */
+/** Return a video's quiz with options but without isCorrect flags */
+/** Return a video's quiz with options but without isCorrect flags */
+/** Return a video's quiz with options but without isCorrect flags */
+async getVideoQuizPublic(videoId: string) {
+  const v = await this.prisma.video.findUnique({
+    where: { id: videoId },
+    include: {
+      quiz: {
+        include: {
+          questions: {
+            orderBy: { order: 'asc' },
+            include: { options: { select: { id: true, text: true } } }, // hide isCorrect
           },
         },
-        sectionUsed: true, // if part of a section, frontend should call courses flow instead
       },
-    });
-    if (!v) throw new NotFoundException('Video not found');
-    if (!v.quiz)
-      return {
-        quiz: null,
-        section: v.sectionUsed ? { id: v.sectionUsed.id, chapterId: v.sectionUsed.chapterId } : null,
-      };
-    return {
-      quiz: {
-        id: v.quiz.id,
-        title: v.quiz.title,
-        questions: v.quiz.questions.map((q) => ({ id: q.id, text: q.text, options: q.options })),
+      sections: {
+        include: {
+          chapter: {
+            include: { course: { select: { id: true, title: true } } },
+          },
+        },
       },
-      section: v.sectionUsed ? { id: v.sectionUsed.id, chapterId: v.sectionUsed.chapterId } : null,
-    };
+    },
+  });
+  if (!v) throw new NotFoundException('Video not found');
+
+  const firstSection = v.sections?.[0];
+  const section = firstSection
+    ? {
+        id: firstSection.id,
+        chapterId: firstSection.chapterId,
+        courseId: firstSection.chapter.course.id,
+        courseTitle: firstSection.chapter.course.title,
+      }
+    : null;
+
+  if (!v.quiz) return { quiz: null, section };
+
+  return {
+    quiz: {
+      id: v.quiz.id,
+      title: v.quiz.title,
+      questions: v.quiz.questions.map(q => ({
+        id: q.id,
+        text: q.text,
+        options: q.options, // no isCorrect
+      })),
+    },
+    section,
+  };
+}
+
+
+
+
+  /** Grade a video-only quiz and store attempt (does NOT touch SectionProgress). */
+/** Grade a video-only quiz and store attempt (does NOT touch SectionProgress) */
+async submitVideoQuizAttempt(
+  authSub: string,
+  videoId: string,
+  answers: { questionId: string; selectedOptionId: string }[],
+) {
+  const me = await this.prisma.user.findUnique({ where: { authSub } });
+  if (!me) throw new NotFoundException('User not found');
+
+  const v = await this.prisma.video.findUnique({
+    where: { id: videoId },
+    include: { quiz: { include: { questions: { include: { options: true } } } }, sections: true },
+  });
+  if (!v) throw new NotFoundException('Video not found');
+  if (!v.quiz) throw new BadRequestException('Video has no quiz');
+
+  // CHANGED: if video is part of any section(s), force course flow
+  if (v.sections?.length) {
+    throw new BadRequestException(
+      'This video belongs to a course section. Use /courses/submit-section-quiz.'
+    );
   }
 
-  /** Grade a video-only quiz and store attempt (does NOT touch SectionProgress) */
-  async submitVideoQuizAttempt(
-    authSub: string,
-    videoId: string,
-    answers: { questionId: string; selectedOptionId: string }[],
-  ) {
-    const me = await this.prisma.user.findUnique({ where: { authSub } });
-    if (!me) throw new NotFoundException('User not found');
+  const key = new Map<string, string>();
+  for (const q of v.quiz.questions) {
+    const c = q.options.find((o) => o.isCorrect);
+    if (c) key.set(q.id, c.id);
+  }
+  let score = 0;
+  for (const a of answers) if (key.get(a.questionId) === a.selectedOptionId) score++;
 
-    const v = await this.prisma.video.findUnique({
-      where: { id: videoId },
-      include: { quiz: { include: { questions: { include: { options: true } } } }, sectionUsed: true },
-    });
-    if (!v) throw new NotFoundException('Video not found');
-    if (!v.quiz) throw new BadRequestException('Video has no quiz');
-    if (v.sectionUsed) {
-      // If it’s part of a course section, frontend should hit /courses/submit-section-quiz instead
-      throw new BadRequestException('This video belongs to a course section. Use /courses/submit-section-quiz.');
-    }
-
-    const key = new Map<string, string>();
-    for (const q of v.quiz.questions) {
-      const c = q.options.find((o) => o.isCorrect);
-      if (c) key.set(q.id, c.id);
-    }
-    let score = 0;
-    for (const a of answers) if (key.get(a.questionId) === a.selectedOptionId) score++;
-
-    return this.prisma.$transaction(async (tx) => {
-      const attempt = await tx.quizAttempt.create({
-        data: {
-          quizId: v.quiz!.id,
-          userId: me.id,
-          startedAt: new Date(),
-          completedAt: new Date(),
-          score,
-          maxScore: v.quiz!.questions.length,
-          passed: score === v.quiz!.questions.length,
-        },
-      });
-      for (const a of answers) {
-        await tx.quizAnswer.create({
-          data: {
-            attemptId: attempt.id,
-            questionId: a.questionId,
-            selectedOptionId: a.selectedOptionId,
-            isCorrect: key.get(a.questionId) === a.selectedOptionId,
-          },
-        });
-      }
-      return {
-        attemptId: attempt.id,
+  return this.prisma.$transaction(async (tx) => {
+    const attempt = await tx.quizAttempt.create({
+      data: {
+        quizId: v.quiz!.id,
+        userId: me.id,
+        startedAt: new Date(),
+        completedAt: new Date(),
         score,
         maxScore: v.quiz!.questions.length,
         passed: score === v.quiz!.questions.length,
-      };
+      },
     });
-  }
+    for (const a of answers) {
+      await tx.quizAnswer.create({
+        data: {
+          attemptId: attempt.id,
+          questionId: a.questionId,
+          selectedOptionId: a.selectedOptionId,
+          isCorrect: key.get(a.questionId) === a.selectedOptionId,
+        },
+      });
+    }
+    return {
+      attemptId: attempt.id,
+      score,
+      maxScore: v.quiz!.questions.length,
+      passed: score === v.quiz!.questions.length,
+    };
+  });
+}
+
 }

@@ -119,7 +119,7 @@ model Video {
   author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   category     Category   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   quiz         Quiz?
-  sectionUsed  Section?   // if included in a course section
+  sections Section[]   // if included in a course section
   likes        VideoLike[]
   comments     VideoComment[]
   seenBy       UserVideoSeen[]
@@ -290,7 +290,7 @@ model Section {
   chapterId String
   title     String
   order     Int
-  videoId   String @unique  // 1:1 — a section uses exactly one short video
+  videoId   String   // 1:1 — a section uses exactly one short video
 
   chapter   Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   video     Video   @relation(fields: [videoId], references: [id], onDelete: Restrict)

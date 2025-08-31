@@ -23,7 +23,7 @@ export class CoursesService {
               { title: { contains: q, mode: 'insensitive' } },
               { description: { contains: q, mode: 'insensitive' } },
               { author: { displayName: { contains: q, mode: 'insensitive' } } },
-              { author: { username: { contains: q, mode: 'insensitive' } } }, // search by username too
+              { author: { username: { contains: q, mode: 'insensitive' } } },
             ],
           }
         : {}),
@@ -36,7 +36,7 @@ export class CoursesService {
       include: {
         author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
         category: { select: { id: true, name: true, slug: true } },
-        _count: { select: { enrollments: true } }, // counts for UI
+        _count: { select: { enrollments: true } },
       },
     });
   }
@@ -68,8 +68,8 @@ export class CoursesService {
             },
           },
         },
-        quizzes: { select: { id: true, title: true, courseId: true } }, // final exam(s) if any
-        _count: { select: { enrollments: true } }, // counts for UI
+        quizzes: { select: { id: true, title: true, courseId: true } },
+        _count: { select: { enrollments: true } },
       },
     });
     if (!course || !course.published) throw new NotFoundException('Course not found');
@@ -92,7 +92,7 @@ export class CoursesService {
 
     return {
       enrollment: enrollment ?? null,
-      sections: sectionProgress, // array of { sectionId, completedAt, score, maxScore }
+      sections: sectionProgress,
     };
   }
 
@@ -192,6 +192,10 @@ export class CoursesService {
     return { ok: true };
   }
 
+  /**
+   * Now that video reuse is allowed, we do NOT block sections by videoId anymore.
+   * We still enforce: video exists AND has a quiz with >= 3 questions.
+   */
   async addSection(chapterId: string, dto: AddSectionDto, authorAuthSub: string) {
     const chapter = await this.prisma.chapter.findUnique({
       where: { id: chapterId },
@@ -210,6 +214,7 @@ export class CoursesService {
       throw new BadRequestException('Video must have a quiz with at least 3 questions to be used as a section');
     }
 
+    // No duplicate-usage check anymore (by design).
     return this.prisma.section.create({
       data: {
         chapterId,
@@ -232,7 +237,7 @@ export class CoursesService {
   }
 
   // Optional: create a final exam by copying all section questions
-  async generateFinalFromSections(courseId: string, authorAuthSub: string) {
+  async generateFinalFromSections(courseId: string, authorAuthSub: string, count?: number, shuffle = true) {
     await this.ensureCourseOwner(courseId, authorAuthSub);
 
     const sections = await this.prisma.section.findMany({
@@ -241,31 +246,26 @@ export class CoursesService {
         video: {
           include: {
             quiz: {
-              include: {
-                questions: { include: { options: true } },
-              },
+              include: { questions: { include: { options: true } } },
             },
           },
         },
       },
-      orderBy: [{ chapter: { order: 'asc' } }, { order: 'asc' }],
     });
 
-    const allQuestions = sections
-      .flatMap((s) => s.video.quiz?.questions ?? [])
-      .filter((q) => !!q);
+    const allQuestions = sections.flatMap((s) => s.video.quiz?.questions ?? []);
+    if (!allQuestions.length) throw new BadRequestException('No questions in sections');
 
-    if (!allQuestions.length) {
-      throw new BadRequestException('No questions found in sections to generate final exam');
-    }
+    const pool = shuffle ? [...allQuestions].sort(() => Math.random() - 0.5) : [...allQuestions];
+    const take = count ? Math.min(count, pool.length) : pool.length;
+    const picked = pool.slice(0, take);
 
     return this.prisma.$transaction(async (tx) => {
       const quiz = await tx.quiz.create({
         data: { title: 'Final Exam', courseId, passScore: null },
       });
-
       let order = 1;
-      for (const q of allQuestions) {
+      for (const q of picked) {
         const newQ = await tx.quizQuestion.create({
           data: { quizId: quiz.id, order: order++, text: q.text },
         });
@@ -275,7 +275,7 @@ export class CoursesService {
           });
         }
       }
-      return { finalQuizId: quiz.id, questions: order - 1 };
+      return { finalQuizId: quiz.id, questions: take };
     });
   }
 
@@ -284,6 +284,7 @@ export class CoursesService {
     const user = await this.prisma.user.findUnique({ where: { authSub } });
     if (!user) throw new NotFoundException('User not found');
 
+    // Idempotent enroll; flips UI on the frontend after re-fetch
     return this.prisma.courseEnrollment.upsert({
       where: { userId_courseId: { userId: user.id, courseId } },
       update: { status: EnrollmentStatus.IN_PROGRESS },
@@ -306,11 +307,7 @@ export class CoursesService {
         chapter: true,
         video: {
           include: {
-            quiz: {
-              include: {
-                questions: { include: { options: true } },
-              },
-            },
+            quiz: { include: { questions: { include: { options: true } } } },
           },
         },
       },
@@ -340,7 +337,7 @@ export class CoursesService {
           completedAt: new Date(),
           score,
           maxScore: max,
-          passed: score === max, // or compare to passScore if you set one
+          passed: score === max,
         },
       });
 
@@ -355,8 +352,8 @@ export class CoursesService {
         });
       }
 
-      // Mark section progress
-      const completed = score === max; // you can relax this rule if needed
+      const completed = score === max;
+
       await tx.sectionProgress.upsert({
         where: { userId_sectionId: { userId: user.id, sectionId: section.id } },
         update: {
@@ -375,7 +372,7 @@ export class CoursesService {
         },
       });
 
-      // Ensure enrollment exists (enrolling if user started via general FYP)
+      // Ensure enrollment exists (handles starting via FYP)
       await tx.courseEnrollment.upsert({
         where: { userId_courseId: { userId: user.id, courseId } },
         update: {},
@@ -420,7 +417,7 @@ function grade(
   questions: { id: string; options: { id: string; correct: boolean }[] }[],
   answers: { questionId: string; selectedOptionId: string }[],
 ) {
-  const key = new Map<string, string>(); // qId -> correct option id
+  const key = new Map<string, string>();
   for (const q of questions) {
     const correct = q.options.find((o) => o.correct);
     if (correct) key.set(q.id, correct.id);

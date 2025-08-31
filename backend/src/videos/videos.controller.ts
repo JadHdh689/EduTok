@@ -54,9 +54,10 @@ export class VideosController {
   }
 
   @Get(':id')
-  getOne(@Param('id') id: string, @Req() req: any) {
-    return this.videos.getById(id, req.auth.sub);
-  }
+getOne(@Param('id') id: string, @Req() req: any) {
+  return this.videos.getById(id, req?.auth?.sub ?? null);
+}
+
 
   // ===== Social: Likes & Comments =====
   @Post(':id/like')
