@@ -1,13 +1,12 @@
-// src/videos/videos.module.ts
 import { Module } from '@nestjs/common';
 import { VideosService } from './videos.service';
 import { VideosController } from './videos.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { UploadsModule } from '../uploads/uploads.module'; // <-- add
+import { UploadsModule } from '../uploads/uploads.module';
 import { AwsModule } from '../aws/aws.module';
 
 @Module({
-  imports: [PrismaModule, UploadsModule, AwsModule], // <-- add UploadsModule so S3Client is visible
+  imports: [PrismaModule, UploadsModule, AwsModule],
   controllers: [VideosController],
   providers: [VideosService],
 })

@@ -12,6 +12,7 @@ import { AuthMiddleware } from './middlewares/AuthMiddleware';
 import { AuthModule } from './auth/auth.module';
 import { UploadsModule } from './uploads/uploads.module'; // <-- add
 import { ProfileModule } from './profile/profile.module'; // <-- add
+import { PublicProfilesModule } from './public-profiles/public-profiles.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -25,6 +26,7 @@ import { ProfileModule } from './profile/profile.module'; // <-- add
     AuthModule,   
     UploadsModule,    // <-- add
     ProfileModule,    // <-- add (optional but handy)
+    PublicProfilesModule,
   ],
 })
 export class AppModule implements NestModule {

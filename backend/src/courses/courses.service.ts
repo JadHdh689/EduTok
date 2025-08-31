@@ -1,4 +1,3 @@
-// src/courses/courses.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCourseDto } from './dto/create-course.dto';
@@ -24,6 +23,7 @@ export class CoursesService {
               { title: { contains: q, mode: 'insensitive' } },
               { description: { contains: q, mode: 'insensitive' } },
               { author: { displayName: { contains: q, mode: 'insensitive' } } },
+              { author: { username: { contains: q, mode: 'insensitive' } } }, // search by username too
             ],
           }
         : {}),
@@ -36,6 +36,7 @@ export class CoursesService {
       include: {
         author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
         category: { select: { id: true, name: true, slug: true } },
+        _count: { select: { enrollments: true } }, // counts for UI
       },
     });
   }
@@ -54,7 +55,13 @@ export class CoursesService {
               include: {
                 video: {
                   select: {
-                    id: true, title: true, description: true, durationSec: true, s3Bucket: true, s3Key: true, thumbKey: true,
+                    id: true,
+                    title: true,
+                    description: true,
+                    durationSec: true,
+                    s3Bucket: true,
+                    s3Key: true,
+                    thumbKey: true,
                   },
                 },
               },
@@ -62,6 +69,7 @@ export class CoursesService {
           },
         },
         quizzes: { select: { id: true, title: true, courseId: true } }, // final exam(s) if any
+        _count: { select: { enrollments: true } }, // counts for UI
       },
     });
     if (!course || !course.published) throw new NotFoundException('Course not found');
@@ -89,37 +97,40 @@ export class CoursesService {
   }
 
   listMyEnrollments(authSub: string, take = 20, skip = 0) {
-  return this.prisma.courseEnrollment.findMany({
-    where: { user: { authSub } },
-    orderBy: { startedAt: 'desc' },  // ⬅️ changed from createdAt
-    take,
-    skip,
-    include: {
-      course: {
-        select: {
-          id: true,
-          title: true,
-          coverImageUrl: true,
-          category: { select: { id: true, name: true } },
+    return this.prisma.courseEnrollment.findMany({
+      where: { user: { authSub } },
+      orderBy: { startedAt: 'desc' },
+      take,
+      skip,
+      include: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            coverImageUrl: true,
+            category: { select: { id: true, name: true } },
+          },
         },
       },
-    },
-  });
-}
-// ...existing service
+    });
+  }
+
   async listAuthored(authSub: string, take = 20, skip = 0) {
     return await this.prisma.course.findMany({
       where: { author: { authSub } },
       orderBy: { createdAt: 'desc' },
-      take, skip,
+      take,
+      skip,
       select: {
-        id: true, title: true, published: true, createdAt: true,
+        id: true,
+        title: true,
+        published: true,
+        createdAt: true,
         coverImageUrl: true,
         category: { select: { id: true, name: true } },
       },
     });
   }
-
 
   // ===== Authoring =====
   async createCourse(authorAuthSub: string, dto: CreateCourseDto) {
@@ -162,7 +173,6 @@ export class CoursesService {
 
   async deleteCourse(courseId: string, authorAuthSub: string) {
     await this.ensureCourseOwner(courseId, authorAuthSub);
-    // cascades will remove chapters/sections/quizzes due to schema relations
     await this.prisma.course.delete({ where: { id: courseId } });
     return { ok: true };
   }
@@ -183,7 +193,10 @@ export class CoursesService {
   }
 
   async addSection(chapterId: string, dto: AddSectionDto, authorAuthSub: string) {
-    const chapter = await this.prisma.chapter.findUnique({ where: { id: chapterId }, include: { course: true } });
+    const chapter = await this.prisma.chapter.findUnique({
+      where: { id: chapterId },
+      include: { course: true },
+    });
     if (!chapter) throw new NotFoundException('Chapter not found');
     await this.ensureCourseOwner(chapter.courseId, authorAuthSub);
 
@@ -222,7 +235,6 @@ export class CoursesService {
   async generateFinalFromSections(courseId: string, authorAuthSub: string) {
     await this.ensureCourseOwner(courseId, authorAuthSub);
 
-    // Gather all questions/options from all section video quizzes
     const sections = await this.prisma.section.findMany({
       where: { chapter: { courseId } },
       include: {
@@ -367,7 +379,12 @@ export class CoursesService {
       await tx.courseEnrollment.upsert({
         where: { userId_courseId: { userId: user.id, courseId } },
         update: {},
-        create: { userId: user.id, courseId, status: EnrollmentStatus.IN_PROGRESS, startedAt: new Date() },
+        create: {
+          userId: user.id,
+          courseId,
+          status: EnrollmentStatus.IN_PROGRESS,
+          startedAt: new Date(),
+        },
       });
 
       // Recompute course progress

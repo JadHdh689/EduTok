@@ -1,5 +1,16 @@
-// src/courses/courses.controller.ts
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { AddChapterDto } from './dto/add-chapter.dto';
@@ -27,8 +38,10 @@ export class CoursesController {
       return this.courses.listAuthored(req.auth.sub, take ? +take : 20, skip ? +skip : 0);
     }
     return this.courses.listPublished({
-      q, categoryId: categoryId ? +categoryId : undefined,
-      take: take ? +take : 12, skip: skip ? +skip : 0,
+      q,
+      categoryId: categoryId ? +categoryId : undefined,
+      take: take ? +take : 12,
+      skip: skip ? +skip : 0,
     });
   }
 
