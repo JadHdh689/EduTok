@@ -1,3 +1,4 @@
+// src/courses/dto/submit-section-quiz.dto.ts
 import { IsArray, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 

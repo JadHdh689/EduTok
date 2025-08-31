@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AdminGuard } from '../guards/admin.guard';
 
@@ -9,17 +19,25 @@ export class UsersController {
   // CREATE/READ current user (implicit create via upsert)
   @Get('me')
   async me(@Req() req: any) {
-    const user = await this.users.upsertFromToken({
+    // Bearer token from the request (could be access or id token)
+    const authz = (req.headers.authorization || req.headers.Authorization || '') as string;
+    const accessToken = authz.startsWith('Bearer ') ? authz.slice(7) : undefined;
+
+    const user = await this.users.upsertFromTokenSmart({
       sub: req.auth.sub,
-      email: req.auth.email,
-      username: req.auth.username,
+      email: req.auth.email,        // may be undefined for access tokens
+      username: req.auth.username,  // prefers preferred_username if your middleware set it
+      accessToken,                  // used to fetch email if missing
     });
     return user;
   }
 
   // UPDATE self
   @Patch()
-  async update(@Req() req: any, @Body() body: { displayName?: string; bio?: string; avatarUrl?: string }) {
+  async update(
+    @Req() req: any,
+    @Body() body: { displayName?: string; bio?: string; avatarUrl?: string },
+  ) {
     const dbUser = await this.users.findByAuthSub(req.auth.sub);
     return this.users.updateProfile(dbUser!.id, body);
   }
@@ -56,7 +74,8 @@ export class UsersController {
   @UseGuards(AdminGuard)
   async adminUpdate(
     @Param('id') id: string,
-    @Body() body: { displayName?: string; bio?: string; avatarUrl?: string; role?: 'USER'|'ADMIN' },
+    @Body()
+    body: { displayName?: string; bio?: string; avatarUrl?: string; role?: 'USER' | 'ADMIN' },
   ) {
     return this.users.adminUpdate(id, body);
   }

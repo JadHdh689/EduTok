@@ -1,5 +1,8 @@
+// src/categories/categories.controller.ts
 import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
+import { Public } from '@prisma/client/runtime/library';
+
 
 @Controller('categories')
 export class CategoriesController {

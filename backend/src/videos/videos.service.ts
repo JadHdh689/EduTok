@@ -1,3 +1,4 @@
+// src/videos/videos.service.ts
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateVideoDto } from './dto/create-video.dto';
@@ -6,12 +7,12 @@ import { Visibility } from '@prisma/client';
 @Injectable()
 export class VideosService {
   constructor(private prisma: PrismaService) {}
-
-  async create(authorAuthSub: string, dto: CreateVideoDto) {
+async create(authorAuthSub: string, dto: CreateVideoDto) {
     if (dto.durationSec > 90) throw new BadRequestException('Video must be ≤ 90 seconds');
+
     // Ensure exactly one correct option per question
     for (const q of dto.quiz) {
-      const correctCount = q.options.filter(o => o.correct === true).length;
+      const correctCount = q.options.filter((o) => o.isCorrect === true).length;
       if (correctCount !== 1) {
         throw new BadRequestException('Each question must have exactly one correct option');
       }
@@ -20,8 +21,7 @@ export class VideosService {
     const author = await this.prisma.user.findUnique({ where: { authSub: authorAuthSub } });
     if (!author) throw new NotFoundException('User not found');
 
-    // Create video + quiz in one transaction
-    return this.prisma.$transaction(async tx => {
+    return this.prisma.$transaction(async (tx) => {
       const video = await tx.video.create({
         data: {
           authorId: author.id,
@@ -39,27 +39,18 @@ export class VideosService {
         data: {
           title: `${dto.title} — Quiz`,
           videoId: video.id,
-          passScore: null, // optional
+          passScore: null,
         },
       });
 
-      // Create questions/options
       for (let qi = 0; qi < dto.quiz.length; qi++) {
         const q = dto.quiz[qi];
         const question = await tx.quizQuestion.create({
-          data: {
-            quizId: quiz.id,
-            order: qi + 1,
-            text: q.text,
-          },
+          data: { quizId: quiz.id, order: qi + 1, text: q.text },
         });
         for (const opt of q.options) {
           await tx.quizOption.create({
-            data: {
-              questionId: question.id,
-              text: opt.text,
-              isCorrect: !!opt.correct,
-            },
+            data: { questionId: question.id, text: opt.text, isCorrect: !!opt.isCorrect },
           });
         }
       }
@@ -67,6 +58,7 @@ export class VideosService {
       return { videoId: video.id };
     });
   }
+
 
   async getById(id: string, authSub: string) {
     // Also mark as seen for general feed anti-repeat
@@ -87,4 +79,34 @@ export class VideosService {
 
     return video;
   }
+   
+  // inside VideosService class
+
+async listMine(authorAuthSub: string, take = 20, skip = 0) {
+  const me = await this.prisma.user.findUnique({ where: { authSub: authorAuthSub } });
+  if (!me) throw new NotFoundException('User not found');
+  return this.prisma.video.findMany({
+    where: { authorId: me.id },
+    orderBy: { createdAt: 'desc' },
+    take, skip,
+  });
+}
+
+async deleteOwn(authorAuthSub: string, videoId: string) {
+  const me = await this.prisma.user.findUnique({ where: { authSub: authorAuthSub } });
+  if (!me) throw new NotFoundException('User not found');
+
+  const v = await this.prisma.video.findUnique({ where: { id: videoId } });
+  if (!v) throw new NotFoundException('Video not found');
+  if (v.authorId !== me.id) throw new BadRequestException('Not your video');
+
+  // Optional: also delete the S3 object if you want (needs s3:DeleteObject permission).
+  // For safety, people often keep uploads even if the DB row is deleted.
+
+  await this.prisma.video.delete({ where: { id: videoId } });
+  return { ok: true };
+}
+
+
+
 }

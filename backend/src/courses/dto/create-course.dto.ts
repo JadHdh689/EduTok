@@ -1,3 +1,4 @@
+// src/courses/dto/create-course.dto.ts
 import { IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateCourseDto {

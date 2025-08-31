@@ -1,0 +1,2 @@
+// src/auth/dto/reset.dto.ts 
+import { IsString, MinLength } from 'class-validator'; export class ResetDto { @IsString() username!: string; @IsString() code!: string; @IsString() @MinLength(8) newPassword!: string; }
