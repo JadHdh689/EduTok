@@ -99,7 +99,7 @@ const Report = ({ isVisible, onClose }) => {
 const styles = StyleSheet.create({
     overlay: {
         position: 'absolute',
-        backgroundColor: "#ffffff6a",
+        backgroundColor: "rgba(48, 48, 48, 0.54)",
         width: '100%',
         height: '100%',
         zIndex: 5,
