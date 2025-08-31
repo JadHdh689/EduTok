@@ -21,8 +21,8 @@ import Footer from '../src/components/footer';
 
 // Constants
 import { colors, fonts, shadowIntensity } from '../src/constants';
-//will be removed later
-import { commonVideos } from '../src/mockData';
+// Import video data functions
+import { getSavedVideos, getFavoriteVideos, getMyVideos } from '../src/mockData';
 
 // Icons
 import AntDesign from '@expo/vector-icons/AntDesign';
@@ -54,7 +54,7 @@ function Profile() {
   const [isReportPopupVisibleMap, setIsReportPopupVisibleMap] = useState({});
 
   // Videos
-  const [videos, setVideos] = useState([]);
+  const [videos, setVideos] = useState(getSavedVideos());
   const [loading, setLoading] = useState(false);
 
   // Active tab
@@ -96,19 +96,14 @@ function Profile() {
   const fetchVideos = async (type, token) => {
     try {
       setLoading(true);
-      let endpoint = '';
-      if (type === 'saved') endpoint = '/api/videos/saved';
-      if (type === 'mine') endpoint = '/api/videos/mine';
-      if (type === 'favorite') endpoint = '/api/videos/favorites';
+      
+      // TODO: Replace with actual API calls
+      let videoData = [];
+      if (type === 'saved') videoData = getSavedVideos();
+      if (type === 'mine') videoData = getMyVideos();
+      if (type === 'favorite') videoData = getFavoriteVideos();
 
-      const res = await fetch(`${API_URL}${endpoint}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) throw new Error('Failed to fetch videos');
-      const data = await res.json();
-
-      setVideos(data.videos || []);
+      setVideos(videoData);
       setActiveTab(type);
       setLoading(false);
     } catch (err) {
@@ -129,8 +124,26 @@ function Profile() {
   const renderVideoItem = ({ item }) => (
     <TouchableOpacity
       style={[styles.videoItem, { width: itemWidthCreator, margin: spacing / 2 }]}
+      onPress={() => {
+        const videoIndex = videos.findIndex(video => video.id === item.id);
+        router.push({
+          pathname: '/fullScreen',
+          params: {
+            initialIndex: videoIndex,
+            videoList: 'profile',
+            profileTab: activeTab
+          }
+        });
+      }}
     >
-      <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} />
+      <Image source={{ uri: item.uri }} style={styles.thumbnail} />
+      
+      {/* Video overlay info */}
+      <View style={styles.videoOverlay}>
+        <Text style={styles.videoOverlayText} numberOfLines={2}>
+          {item.title}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -412,7 +425,7 @@ function Profile() {
 
           {/* Videos Grid Section */}
           <FlatList
-            data={commonVideos}
+            data={videos}
             renderItem={renderVideoItem}
             keyExtractor={(item) => item.id}
             numColumns={3}
@@ -620,6 +633,22 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 11,
+  },
+  videoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
+    borderBottomLeftRadius: 11,
+    borderBottomRightRadius: 11,
+  },
+  videoOverlayText: {
+    color: 'white',
+    fontSize: 10,
+    fontFamily: fonts.initial,
+    fontWeight: '500',
   },
   popupContainer: {
     backgroundColor: 'white',

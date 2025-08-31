@@ -1,7 +1,8 @@
 import { Image, FlatList, useWindowDimensions, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Video, Audio } from 'expo-av';
 
 // Components
 import Footer from '../src/components/footer';
@@ -18,13 +19,41 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Fontisto from '@expo/vector-icons/Fontisto';
 
 // Mock Data - Will be replaced with API calls
-import { user, GeneralRetrivedVids, FollowedRetrivedVids, myVideos } from '../src/mockData';
+import { user, getGeneralVideos, getFollowedVideos, getSavedVideos, getFavoriteVideos, getMyVideos } from '../src/mockData';
+
+// Video source mapping function
+const getVideoSource = (subject) => {
+  const subjectLower = subject?.toLowerCase() || '';
+  
+  const videoMap = {
+    'physics': require('../src/mockVideos/physics.mp4'),
+    'engineering': require('../src/mockVideos/engineer.mp4'),
+    'engineer': require('../src/mockVideos/engineer.mp4'),
+    'computer science': require('../src/mockVideos/computer science.mp4'),
+    'biology': require('../src/mockVideos/biology.mp4'),
+    'medicine': require('../src/mockVideos/premed.mp4'),
+    'premed': require('../src/mockVideos/premed.mp4'),
+    'pre-med': require('../src/mockVideos/premed.mp4'),
+  };
+  
+  // Find the best match
+  for (const [key, value] of Object.entries(videoMap)) {
+    if (subjectLower.includes(key.toLowerCase())) {
+      return value;
+    }
+  }
+  
+  // Default fallback
+  return require('../src/mockVideos/physics.mp4');
+};
 
 function FullScreen() {
     // State Management
     const [fypState, setFypState] = useState("General");
-    const [videos, setVideos] = useState(GeneralRetrivedVids); // TODO: Replace with API fetched data
+    const [videos, setVideos] = useState(getGeneralVideos()); // TODO: Replace with API fetched data
     const [isCommentsVisible, setIsCommentsVisible] = useState(false); // State for comments visibility
+    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+    const [pausedVideos, setPausedVideos] = useState({}); // Track manually paused videos
 
     // Navigation
     const router = useRouter();
@@ -35,6 +64,9 @@ function FullScreen() {
 
     // Refs
     const flatListRef = useRef(null);
+    const videoRefs = useRef(new Map());
+    const currentPlayingIndex = useRef(null);
+    const pausedVideosRef = useRef({});
 
     // Interaction States
     const [expandMap, setExpandMap] = useState({});
@@ -62,19 +94,39 @@ function FullScreen() {
     const actionBarMarginRight = isSmallPhone ? 15 : isMediumPhone ? 18 : 20;
     const videoInfoBottom = isSmallPhone ? insets.bottom + 60 : isMediumPhone ? insets.bottom + 70 : insets.bottom + 80;
 
+    // Configure audio mode for video playback
+    useEffect(() => {
+        Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: true,
+            staysActiveInBackground: false,
+            playThroughEarpieceAndroid: false,
+        });
+    }, []);
+
     // Initialize videos based on navigation params and scroll to initial index
     useEffect(() => {
         if (videoListType === 'followed') {
-            setVideos(FollowedRetrivedVids);
+            setVideos(getFollowedVideos());
             setFypState("Followed");
         } else if (videoListType === 'profile') {
-            setVideos(myVideos);
+            // Handle different profile tabs
+            if (profileTab === 'saved') {
+                setVideos(getSavedVideos());
+            } else if (profileTab === 'favorite') {
+                setVideos(getFavoriteVideos());
+            } else if (profileTab === 'mine') {
+                setVideos(getMyVideos());
+            } else {
+                setVideos(getSavedVideos()); // Default to saved
+            }
             setFypState("Profile");
         } else {
-            setVideos(GeneralRetrivedVids);
+            setVideos(getGeneralVideos());
             setFypState("General");
         }
-    }, [videoListType]);
+    }, [videoListType, profileTab]);
 
     // Scroll to initial video when component mounts
     useEffect(() => {
@@ -87,6 +139,99 @@ function FullScreen() {
             }, 100);
         }
     }, [initialIndex]);
+
+    // Keep ref in sync with state
+    useEffect(() => {
+        pausedVideosRef.current = pausedVideos;
+    }, [pausedVideos]);
+
+    // Handle viewable items changed - auto play/pause videos
+    const handleViewableItemsChanged = useCallback(({ viewableItems }) => {
+        if (viewableItems.length > 0) {
+            const newIndex = viewableItems[0].index;
+            
+            // Stop currently playing video
+            if (currentPlayingIndex.current !== null && currentPlayingIndex.current !== newIndex) {
+                const currentVideoRef = videoRefs.current.get(currentPlayingIndex.current);
+                if (currentVideoRef) {
+                    currentVideoRef.pauseAsync();
+                    // Don't reset to beginning when scrolling away
+                }
+            }
+            
+            // Play the new visible video only if it's not manually paused
+            const newVideoRef = videoRefs.current.get(newIndex);
+            if (newVideoRef && !pausedVideosRef.current[newIndex]) {
+                newVideoRef.playAsync();
+                currentPlayingIndex.current = newIndex;
+                setCurrentVideoIndex(newIndex);
+            } else {
+                currentPlayingIndex.current = newIndex;
+                setCurrentVideoIndex(newIndex);
+            }
+        }
+    }, []);
+
+    // Clean up video refs when component unmounts
+    useEffect(() => {
+        return () => {
+            // Pause all videos on unmount
+            videoRefs.current.forEach((ref) => {
+                if (ref) {
+                    ref.pauseAsync();
+                }
+            });
+        };
+    }, []);
+
+    // Handle video end
+    const handleVideoEnd = async (videoId, index) => {
+        // For FullScreen component, we might not need the quiz logic
+        // Just play the next video if available
+        if (index < videos.length - 1) {
+            // Auto-scroll to next video after a short delay
+            setTimeout(() => {
+                if (flatListRef.current) {
+                    flatListRef.current.scrollToIndex({
+                        index: index + 1,
+                        animated: true
+                    });
+                }
+            }, 1000);
+        }
+    };
+
+    // Handle video tap (play/pause)
+    const handleVideoTap = async (index) => {
+        const videoRef = videoRefs.current.get(index);
+        if (videoRef) {
+            const status = await videoRef.getStatusAsync();
+            
+            if (status.isPlaying) {
+                // Pause the video
+                await videoRef.pauseAsync();
+                setPausedVideos(prev => ({ ...prev, [index]: true }));
+            } else {
+                // Play the video
+                await videoRef.playAsync();
+                setPausedVideos(prev => ({ ...prev, [index]: false }));
+                
+                // Update current playing index
+                if (currentPlayingIndex.current !== null && currentPlayingIndex.current !== index) {
+                    const currentVideoRef = videoRefs.current.get(currentPlayingIndex.current);
+                    if (currentVideoRef) {
+                        currentVideoRef.pauseAsync();
+                    }
+                }
+                currentPlayingIndex.current = index;
+            }
+        }
+    };
+
+    // Viewability config
+    const viewabilityConfig = useRef({
+        itemVisiblePercentThreshold: 90, // Higher threshold for better TikTok-like experience
+    });
 
     // Text Utilities
     const textSlice = (text, needsExpansion, isExpanded) => {
@@ -111,15 +256,15 @@ function FullScreen() {
     const handleTabChange = () => {
         if (fypState == "General") {
             setFypState("Followed");
-            setVideos(FollowedRetrivedVids); // TODO: Fetch followed videos from backend
+            setVideos(getFollowedVideos()); // TODO: Fetch followed videos from backend
         } else {
             setFypState("General");
-            setVideos(GeneralRetrivedVids); // TODO: Fetch general videos from backend
+            setVideos(getGeneralVideos()); // TODO: Fetch general videos from backend
         }
     };
 
     // Video Item Renderer
-    const renderVideoItem = ({ item }) => {
+    const renderVideoItem = ({ item, index }) => {
         const id = item.id;
         const isLiked = likedMap[id] || false;
         const likesCount = likesMap[id] ?? item.likes;
@@ -131,14 +276,40 @@ function FullScreen() {
 
         return (
             <View style={[styles.videoItem, { height: height }]}>
-                {/* Video Content */}
-                <View style={styles.videoContainer}>
-                    <Image
-                        source={{ uri: item.uri }}
-                        style={[styles.thumbnail, { width: width, height: height }]}
-                        resizeMode="contain"
+                {/* Video Content with Tap Handler */}
+                <TouchableOpacity 
+                    style={styles.videoContainer}
+                    activeOpacity={1} // Prevents opacity change on tap
+                    onPress={() => handleVideoTap(index)}
+                >
+                    <Video
+                        ref={(ref) => {
+                            videoRefs.current.set(index, ref);
+                        }}
+                        source={getVideoSource(item.subject)}
+                        style={[styles.videoPlayer, { width: width, height: height }]}
+                        resizeMode="cover"
+                        shouldPlay={index === currentVideoIndex && !pausedVideos[index]} // Auto-play current video
+                        isLooping={false}
+                        useNativeControls={false}
+                        onPlaybackStatusUpdate={(status) => {
+                            if (status.didJustFinish && !status.isLooping) {
+                                handleVideoEnd(id, index);
+                            }
+                        }}
                     />
-                </View>
+                    
+                    {/* Play/Pause Overlay Icon */}
+                    {pausedVideos[index] && (
+                        <View style={styles.playPauseOverlay}>
+                            <MaterialIcons 
+                                name="play-circle-filled" 
+                                size={70} 
+                                color="rgba(255, 255, 255, 0.7)" 
+                            />
+                        </View>
+                    )}
+                </TouchableOpacity>
 
                 {/* Video Info Overlay */}
                 <View style={[styles.videoInfoContainer, { 
@@ -260,7 +431,6 @@ function FullScreen() {
                             </Text>
                         </TouchableOpacity>
 
-
                         {/* Quiz Button */}
                         <TouchableOpacity style={[styles.actionButton, { marginTop: actionButtonSpacing }]}
                         onPress={() => router.push({
@@ -328,6 +498,8 @@ function FullScreen() {
                     initialScrollIndex={initialIndex}
                     snapToInterval={height}
                     snapToAlignment="start"
+                    onViewableItemsChanged={handleViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig.current}
                     removeClippedSubviews={true}
                     maxToRenderPerBatch={2}
                     initialNumToRender={1}
@@ -399,10 +571,9 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
     },
-    thumbnail: {
+    videoPlayer: {
         width: '100%',
         height: '100%',
-        resizeMode: 'contain',
     },
     videoInfoContainer: {
         alignItems: 'flex-end',
@@ -467,7 +638,6 @@ const styles = StyleSheet.create({
     followingText: {
         color: '#ffffff',
     },
-
     actionBar: {
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -519,7 +689,16 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: "#ffffff",
     },
-
+    playPauseOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    },
 });
 
 export default FullScreen;

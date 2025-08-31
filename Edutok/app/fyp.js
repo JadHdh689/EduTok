@@ -2,7 +2,7 @@ import { useWindowDimensions, StyleSheet, View, Text, Image, FlatList, Touchable
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
-
+import { Video } from 'expo-av';
 // Components
 import Footer from '../src/components/footer';
 

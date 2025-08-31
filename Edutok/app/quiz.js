@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Alert, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { commonVideos } from '../src/mockData';
+import { realVideos, courseVideos } from '../src/mockData';
 import { Radio } from '../src/components/Report';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fonts, shadowIntensity } from '../src/constants';
@@ -46,7 +46,8 @@ export default function Quiz() {
     title = "Chapter Quiz";
   } else {
     // Default to video
-    content = commonVideos.find(v => v.id === videoId);
+    // First try to find in real videos, then in course videos
+    content = realVideos.find(v => v.id === videoId) || courseVideos.find(v => v.id === videoId);
     title = "Video Quiz";
   }
 

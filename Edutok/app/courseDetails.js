@@ -15,7 +15,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 // Mock Data - Will be replaced with API calls
-import { getCourseById, getVideosByChapter } from '../src/mockData';
+import { getCourseById, getVideosByChapter, realVideos, courseVideos } from '../src/mockData';
 
 function CourseDetails() {
     // Navigation and params
@@ -56,13 +56,16 @@ function CourseDetails() {
 
     // Handle video selection
     const handleVideoPress = (video) => {
-        const videoIndex = chapterVideos.findIndex(v => v.id === video.id);
+        // Find the video in the course videos array
+        const allCourseVideos = courseVideos.filter(v => v.courseId === course.id);
+        const videoIndex = allCourseVideos.findIndex(v => v.id === video.id);
         router.push({
             pathname: '/fullScreen',
             params: {
                 initialIndex: videoIndex,
                 videoList: 'course',
-                chapterId: selectedChapter.id
+                chapterId: selectedChapter.id,
+                courseId: course.id
             }
         });
     };
