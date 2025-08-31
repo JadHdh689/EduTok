@@ -15,9 +15,10 @@ import ResetPage from './pages/auth/Reset';
 
 // profile
 import ProfilePage from './pages/profile/ProfilePage';
+import FypPage from './pages/fyp/FypPage';
 
 // placeholders for now
-function FeedPage(){ return <div style={{padding:16}}>General FYP (coming next)</div>; }
+
 function FollowingPage(){ return <div style={{padding:16}}>Following (coming next)</div>; }
 function CoursesPage(){ return <div style={{padding:16}}>Courses (coming next)</div>; }
 
@@ -38,7 +39,7 @@ export default function App() {
 
         <Route element={<ProtectedRoute/>}>
           <Route path="/profile" element={<ProfilePage/>} />
-          <Route path="/feed" element={<FeedPage/>} />
+          <Route path="/feed" element={<FypPage/>} />
           <Route path="/following" element={<FollowingPage/>} />
           <Route path="/courses" element={<CoursesPage/>} />
         </Route>

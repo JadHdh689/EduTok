@@ -1,3 +1,4 @@
+//src/components/profile/MyVideos.tsx
 import { useEffect, useState } from 'react';
 import {
   Alert,

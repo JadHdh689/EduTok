@@ -1,3 +1,4 @@
+// src/components/ProtectedRoute.tsx
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../store/hook';
 import { selectIsAuthed } from '../features/auth/selectors';

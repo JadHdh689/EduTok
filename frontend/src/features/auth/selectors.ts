@@ -1,3 +1,4 @@
+//src/components/features/auth/selectors.ts
 import type { RootState } from '../../store';
 
 export const selectAuth = (state: RootState) => state.auth;

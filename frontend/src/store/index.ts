@@ -1,3 +1,4 @@
+// src/store/index.ts
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer, { type AuthState } from '../features/auth/authSlice';
 

@@ -1,3 +1,4 @@
+//src/components/video/VideoPlayerDialog.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,

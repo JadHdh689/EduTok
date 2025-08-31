@@ -1,3 +1,4 @@
+// src/components/features/auth/authSlice.ts
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { AuthAPI, tokenStore, type Tokens } from '../../services/api';
 

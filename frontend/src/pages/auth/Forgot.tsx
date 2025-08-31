@@ -1,3 +1,4 @@
+//src/pages/auth/Forgot.tsx
 import { useState } from 'react';
 import { Alert, Stack, TextField, Typography, Link } from '@mui/material';
 import { AuthAPI } from '../../services/api';

@@ -223,6 +223,26 @@ export const CoursesAPI = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Optional POST-only helper
 // ─────────────────────────────────────────────────────────────────────────────
+
+export const FeedAPI = {
+  async next(categoryId?: number, exclude?: string) {
+    const params: any = {};
+    if (categoryId) params.categoryId = categoryId;
+    if (exclude) params.exclude = exclude;
+    const { data } = await api.get('/feed/next', { params });
+    // { id, title, description, durationSec, category?, author? }
+    return data as {
+      id: string;
+      title: string;
+      description?: string | null;
+      durationSec: number;
+      category?: { id: number; name: string } | null;
+      author?: { id: string; username: string; displayName: string; avatarUrl?: string | null } | null;
+    };
+  },
+};
+
+
 export async function postToS3(url: string, fields: Record<string, string>, file: File) {
   const form = new FormData();
   Object.entries(fields).forEach(([k, v]) => form.append(k, v));
