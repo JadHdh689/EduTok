@@ -3,10 +3,13 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { Visibility } from '@prisma/client';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Inject } from '@nestjs/common'
 
 @Injectable()
 export class VideosService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, @Inject(S3Client) private s3: S3Client) {}
 async create(authorAuthSub: string, dto: CreateVideoDto) {
     if (dto.durationSec > 90) throw new BadRequestException('Video must be ≤ 90 seconds');
 
@@ -106,7 +109,45 @@ async deleteOwn(authorAuthSub: string, videoId: string) {
   await this.prisma.video.delete({ where: { id: videoId } });
   return { ok: true };
 }
+async getStreamUrlById(videoId: string, authSub: string) {
+  const me = await this.prisma.user.findUnique({ where: { authSub } });
+  const v = await this.prisma.video.findUnique({ where: { id: videoId } });
+  if (!v) throw new NotFoundException('Video not found');
 
+  // Example rule: allow anyone since visibility is PUBLIC; otherwise ensure v.authorId === me?.id
+  // if (v.visibility !== 'PUBLIC' && v.authorId !== me?.id) throw new BadRequestException('Forbidden');
+
+  const cmd = new GetObjectCommand({ Bucket: v.s3Bucket, Key: v.s3Key });
+  const url = await getSignedUrl(this.s3 as any, cmd, { expiresIn: 900 });
+  return { url };
+}
+  async getStreamUrl(authSub: string | undefined, videoId: string, expiresIn = 900) {
+    const video = await this.prisma.video.findUnique({ where: { id: videoId } });
+    if (!video) throw new NotFoundException('Video not found');
+
+    // Optional: authorize — allow author or PUBLIC visibility
+    if (video.visibility !== 'PUBLIC') {
+      const me = authSub ? await this.prisma.user.findUnique({ where: { authSub } }) : null;
+      if (!me || me.id !== video.authorId) {
+        throw new BadRequestException('Not allowed');
+      }
+    }
+
+    const Bucket = video.s3Bucket || process.env.S3_BUCKET!;
+    const Key = video.s3Key;
+
+    const url = await getSignedUrl(
+      this.s3,
+      new GetObjectCommand({
+        Bucket,
+        Key,
+        ResponseContentType: 'video/mp4', // helps some browsers
+      }),
+      { expiresIn },
+    );
+
+    return { url };
+  }
 
 
 }

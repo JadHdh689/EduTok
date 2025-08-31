@@ -27,9 +27,16 @@ export class VideosController {
   remove(@Req() req: any, @Param('id') id: string) {
     return this.videos.deleteOwn(req.auth.sub, id);
   }
-
+ @Get(':id/stream')
+  async stream(@Req() req: any, @Param('id') id: string, @Query('expires') expires?: string) {
+    const n = Math.max(60, Math.min(3600, Number(expires) || 900)); // 1–60 min
+    return this.videos.getStreamUrl(req.auth?.sub, id, n);
+  }
   @Get(':id')
   getOne(@Param('id') id: string, @Req() req: any) {
     return this.videos.getById(id, req.auth.sub);
   }
+  // src/videos/videos.controller.ts (add)
+
+
 }

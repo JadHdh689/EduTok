@@ -1,7 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
 export class UploadsService {
@@ -44,5 +45,22 @@ export class UploadsService {
     });
 
     return { url, fields, key };
+  }
+  
+  async signGetUrl(params: { bucket?: string; key: string; expiresSec?: number }) {
+    const bucket = params.bucket || this.cfg.get<string>('S3_BUCKET');
+    const key = params.key?.trim();
+    if (!bucket || !key) throw new BadRequestException('Missing bucket/key');
+    if (key.includes('..')) throw new BadRequestException('Invalid key');
+
+    const expiresIn = Math.min(Math.max(params.expiresSec ?? 900, 60), 3600); // 1–60 min
+
+    const cmd = new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+
+    const url = await getSignedUrl(this.s3, cmd, { expiresIn });
+    return { url, key, bucket, expiresIn };
   }
 }
