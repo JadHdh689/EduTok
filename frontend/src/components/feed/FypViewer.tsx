@@ -1,6 +1,18 @@
+// src/components/feed/FypViewer.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Box, CircularProgress, IconButton, MenuItem, Stack, TextField, Tooltip, Typography, Badge
+  Alert,
+  Badge,
+  Box,
+  CircularProgress,
+  IconButton,
+  MenuItem,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
@@ -10,10 +22,10 @@ import SkipNextIcon from '@mui/icons-material/SkipNext';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
-import { useNavigate } from 'react-router-dom';
 import { CommonAPI, FeedAPI, VideosAPI } from '../../services/api';
 import CommentsDrawer from './CommentsDrawer';
 import QuizModal from './QuizModal';
+import { useNavigate } from 'react-router-dom';
 
 type FeedItem = {
   id: string;
@@ -27,14 +39,15 @@ type FeedItem = {
   likedByMe?: boolean;
 };
 
-const UI = {
-  TOP: 56,
-  BOTTOM: 110,
-  RIGHT_STACK_GAP: 16,
-};
-
 export default function FypViewer() {
-  const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // <600px
+  const nav = useNavigate();
+
+  // Scale UI chrome with breakpoint
+  const TOP = isMobile ? 48 : 56;
+  const BOTTOM = isMobile ? 96 : 110;
+  const RIGHT_GAP = isMobile ? 8 : 16;
 
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [catId, setCatId] = useState<number | ''>(() => {
@@ -58,7 +71,7 @@ export default function FypViewer() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastIdRef = useRef<string | null>(null);
 
-  // keep like state snappy across tab/category switches
+  // keep like state snappy across switches
   const likeCacheRef = useRef<Map<string, { liked: boolean; count: number | null }>>(new Map());
 
   useEffect(() => {
@@ -83,15 +96,15 @@ export default function FypViewer() {
       const serverLikes =
         typeof full?.likesCount === 'number'
           ? full.likesCount
-          : typeof (full as any)?._count?.likes === 'number'
-          ? (full as any)._count.likes
+          : typeof full?._count?.likes === 'number'
+          ? full._count.likes
           : null;
-      const serverLiked = !!(full as any)?.likedByMe;
+      const serverLiked = !!full?.likedByMe;
       setLikesCount(serverLikes);
       setLiked(serverLiked);
       likeCacheRef.current.set(videoId, { liked: serverLiked, count: serverLikes });
     } catch {
-      // ignore — we already show cached/optimistic
+      // ignore
     }
   }
 
@@ -107,7 +120,7 @@ export default function FypViewer() {
       setItem(next);
       lastIdRef.current = next.id;
 
-      // use cached like state instantly (prevents heart flashing off)
+      // use cached like state instantly
       const cached = likeCacheRef.current.get(next.id);
       if (cached) {
         setLiked(cached.liked);
@@ -122,7 +135,6 @@ export default function FypViewer() {
       setPaused(false);
       setProgress(0);
 
-      // fetch authoritative meta (likedByMe/likesCount)
       hydrateMeta(next.id);
     } catch (e: any) {
       setErr(e?.response?.data?.message || e.message || 'No videos available');
@@ -144,9 +156,7 @@ export default function FypViewer() {
   }, [paused, playUrl]);
 
   const duration = useMemo(
-    () => (videoRef.current?.duration && isFinite(videoRef.current.duration)
-      ? videoRef.current.duration
-      : (item?.durationSec ?? 0)),
+    () => videoRef.current?.duration || item?.durationSec || 0,
     [item, playUrl]
   );
 
@@ -169,7 +179,6 @@ export default function FypViewer() {
     if (!item) return;
     const wantLike = !liked;
 
-    // optimistic update + cache
     const nextCount = typeof likesCount === 'number' ? likesCount + (wantLike ? 1 : -1) : null;
     setLiked(wantLike);
     if (nextCount !== null) setLikesCount(nextCount);
@@ -178,11 +187,8 @@ export default function FypViewer() {
     try {
       if (wantLike) await VideosAPI.like(item.id);
       else await VideosAPI.unlike(item.id);
-
-      // optional: re-hydrate to ensure server truth
       hydrateMeta(item.id);
     } catch {
-      // revert on error
       const prevLiked = !wantLike;
       const reverted = typeof likesCount === 'number' ? likesCount + (wantLike ? -1 : 1) : null;
       setLiked(prevLiked);
@@ -191,20 +197,39 @@ export default function FypViewer() {
     }
   }
 
-  const goToAuthorProfile = () => {
-    if (!item?.author?.username) return;
-    navigate(`/u/${item.author.username}`);
-  };
-
   return (
-    <Box sx={{ position: 'relative', width: '100%', height: '100vh', bgcolor: 'black', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        position: 'relative',
+        width: '100%',
+        height: '100dvh', // better mobile vh
+        bgcolor: 'black',
+        overflow: 'hidden',
+        pb: 'var(--safe-bottom)',
+        pt: 'var(--safe-top)',
+      }}
+    >
       {/* Top bar */}
-      <Box sx={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: UI.TOP,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        px: 2, bgcolor: 'rgba(0,0,0,0.25)', zIndex: 2, backdropFilter: 'blur(4px)'
-      }}>
-        <Typography sx={{ color: '#fff', fontWeight: 700 }}>For You</Typography>
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: TOP,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 2,
+          bgcolor: 'rgba(0,0,0,0.25)',
+          zIndex: 2,
+          backdropFilter: 'blur(4px)',
+          gap: 1,
+        }}
+      >
+        <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: isMobile ? 16 : 18 }}>
+          For You
+        </Typography>
 
         <TextField
           select
@@ -217,13 +242,13 @@ export default function FypViewer() {
             displayEmpty: true,
             renderValue: (val) => {
               if (val === '' || val === undefined) return 'All';
-              const found = categories.find(c => c.id === Number(val));
+              const found = categories.find((c) => c.id === Number(val));
               return found?.name ?? 'All';
             },
             MenuProps: { PaperProps: { sx: { maxHeight: 320 } } },
           }}
           sx={{
-            width: 220,
+            width: { xs: 150, sm: 220 },
             '& .MuiInputBase-input': { color: '#fff' },
             '& .MuiInputLabel-root': { color: '#fff' },
             '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
@@ -231,24 +256,31 @@ export default function FypViewer() {
           }}
         >
           <MenuItem value="">All</MenuItem>
-          {categories.map(c => (
-            <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+          {categories.map((c) => (
+            <MenuItem key={c.id} value={c.id}>
+              {c.name}
+            </MenuItem>
           ))}
         </TextField>
       </Box>
 
-      {/* SAFE AREA */}
-      <Box sx={{ position: 'absolute', top: UI.TOP, bottom: UI.BOTTOM, left: 0, right: 0, overflow: 'hidden' }}>
-        {/* Absolute centerer */}
+      {/* SAFE AREA for video */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: TOP,
+          bottom: BOTTOM,
+          left: 0,
+          right: 0,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Click anywhere to toggle play/pause */}
         <Box
-          onClick={() => setPaused(p => !p)}
+          onClick={() => setPaused((p) => !p)}
           sx={{
             position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            maxWidth: '100%',
-            maxHeight: '100%',
+            inset: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -269,10 +301,11 @@ export default function FypViewer() {
               preload="auto"
               onEnded={() => fetchNext(item?.id || undefined)}
               style={{
-                width: 'auto',
-                height: 'auto',
-                maxWidth: '40%',
-                maxHeight: '50%',
+                // Desktop centers a contained box; Mobile fills area
+                width: isMobile ? '100%' : 'auto',
+                height: isMobile ? '100%' : 'auto',
+                maxWidth: isMobile ? '100%' : '40%',
+                maxHeight: isMobile ? '100%' : '50%',
                 objectFit: 'contain',
                 display: 'block',
               }}
@@ -281,89 +314,151 @@ export default function FypViewer() {
         </Box>
       </Box>
 
-      {/* Right controls */}
+      {/* Right controls (desktop) */}
       <Stack
         spacing={2}
         sx={{
           position: 'absolute',
           right: 12,
-          bottom: UI.BOTTOM + UI.RIGHT_STACK_GAP,
+          bottom: BOTTOM + RIGHT_GAP,
           zIndex: 3,
-          alignItems: 'center'
+          alignItems: 'center',
+          display: { xs: 'none', sm: 'flex' }, // hide on mobile
         }}
       >
         <Tooltip title={paused ? 'Play' : 'Pause'}>
-          <IconButton onClick={() => setPaused(p => !p)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+          <IconButton
+            onClick={() => setPaused((p) => !p)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+          >
             {paused ? <PauseCircleOutlineIcon /> : <PlayCircleOutlineIcon />}
           </IconButton>
         </Tooltip>
 
         <Tooltip title={liked ? 'Unlike' : 'Like'}>
           <Badge badgeContent={typeof likesCount === 'number' ? likesCount : undefined} color="error">
-            <IconButton onClick={toggleLike} sx={{ color: liked ? '#ff3b5c' : '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+            <IconButton
+              onClick={toggleLike}
+              sx={{ color: liked ? '#ff3b5c' : '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+            >
               <FavoriteBorderIcon />
             </IconButton>
           </Badge>
         </Tooltip>
 
         <Tooltip title="Comments">
-          <IconButton onClick={() => setCommentsOpen(true)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+          <IconButton
+            onClick={() => setCommentsOpen(true)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+          >
             <ChatBubbleOutlineIcon />
           </IconButton>
         </Tooltip>
 
         <Tooltip title={muted ? 'Unmute' : 'Mute'}>
-          <IconButton onClick={() => setMuted(m => !m)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+          <IconButton
+            onClick={() => setMuted((m) => !m)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+          >
             {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
           </IconButton>
         </Tooltip>
 
-        <Tooltip title="Take quiz">
-          <IconButton onClick={() => setQuizOpen(true)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
-            <QuizOutlinedIcon />
-          </IconButton>
-        </Tooltip>
-
         <Tooltip title="Next">
-          <IconButton onClick={() => fetchNext(item?.id)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+          <IconButton
+            onClick={() => fetchNext(item?.id)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+          >
             <SkipNextIcon />
           </IconButton>
         </Tooltip>
       </Stack>
 
-      {/* Bottom bar */}
+      {/* Bottom *row* of controls (mobile only) */}
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          position: 'absolute',
+          left: 8,
+          right: 8,
+          bottom: BOTTOM + 8,
+          zIndex: 3,
+          display: { xs: 'flex', sm: 'none' },
+          justifyContent: 'center',
+        }}
+      >
+        <IconButton
+          onClick={() => setPaused((p) => !p)}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          {paused ? <PauseCircleOutlineIcon /> : <PlayCircleOutlineIcon />}
+        </IconButton>
+        <IconButton
+          onClick={toggleLike}
+          sx={{ color: liked ? '#ff3b5c' : '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          <FavoriteBorderIcon />
+        </IconButton>
+        <IconButton
+          onClick={() => setCommentsOpen(true)}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          <ChatBubbleOutlineIcon />
+        </IconButton>
+        <IconButton
+          onClick={() => setMuted((m) => !m)}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
+        </IconButton>
+        <IconButton
+          onClick={() => fetchNext(item?.id)}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          <SkipNextIcon />
+        </IconButton>
+      </Stack>
+
+      {/* Bottom bar (title + scrubber) */}
       <Box
         sx={{
           position: 'absolute',
           left: 0,
           right: 0,
           bottom: 0,
-          height: UI.BOTTOM,
-          p: 2,
+          height: BOTTOM,
+          p: { xs: 1.25, sm: 2 },
           zIndex: 3,
-          background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 35%, rgba(0,0,0,.85) 100%)',
+          background:
+            'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 35%, rgba(0,0,0,.85) 100%)',
         }}
       >
         {item && (
           <>
-            <Typography sx={{ color: '#fff', fontWeight: 600 }} noWrap>{item.title}</Typography>
             <Typography
-              sx={{
-                color: '#ddd',
-                cursor: item.author?.username ? 'pointer' : 'default',
-                textDecoration: item.author?.username ? 'underline' : 'none',
-                textUnderlineOffset: '2px',
-                '&:hover': { opacity: item.author?.username ? 0.9 : 1 },
-              }}
+              sx={{ color: '#fff', fontWeight: 600, fontSize: isMobile ? 14 : 16 }}
               noWrap
-              onClick={goToAuthorProfile}
-              title={item.author?.username ? `View @${item.author.username}` : undefined}
             >
-              {item.author?.displayName || item.author?.username || 'Unknown'} · {item.category?.name || 'All'}
+              {item.title}
+            </Typography>
+            <Typography sx={{ color: '#ddd', fontSize: isMobile ? 12 : 14 }} noWrap>
+              {/* Tap author name to go to profile */}
+              <span
+                style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const uname = item.author?.username || item.author?.displayName;
+                  if (uname) nav(`/u/${encodeURIComponent(uname)}`);
+                }}
+              >
+                {item.author?.displayName || item.author?.username || 'Unknown'}
+              </span>{' '}
+              · {item.category?.name || 'All'}
             </Typography>
 
             <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography sx={{ color: '#ccc', minWidth: 42 }} variant="caption">
+              <Typography sx={{ color: '#ccc', minWidth: 38 }} variant="caption">
                 {Math.floor(progress)}s
               </Typography>
               <input
@@ -374,7 +469,10 @@ export default function FypViewer() {
                 onChange={(e) => onSeek(Number(e.target.value))}
                 style={{ width: '100%' }}
               />
-              <Typography sx={{ color: '#ccc', minWidth: 42, textAlign: 'right' }} variant="caption">
+              <Typography
+                sx={{ color: '#ccc', minWidth: 38, textAlign: 'right' }}
+                variant="caption"
+              >
                 {Math.floor(duration || item.durationSec || 0)}s
               </Typography>
             </Box>
@@ -383,14 +481,18 @@ export default function FypViewer() {
       </Box>
 
       {/* Modals */}
-      <CommentsDrawer open={commentsOpen} onClose={() => setCommentsOpen(false)} videoId={item?.id || null} />
+      <CommentsDrawer
+        open={commentsOpen}
+        onClose={() => setCommentsOpen(false)}
+        videoId={item?.id || null}
+      />
       <QuizModal
         open={quizOpen}
         onClose={() => setQuizOpen(false)}
         videoId={item?.id || null}
-        onGoToCourse={(sectionId) => {
-          console.log('Go to course section', sectionId);
+        onGoToCourse={(sectionId, courseId) => {
           setQuizOpen(false);
+          nav(`/courses/${courseId}/sections/${sectionId}`);
         }}
       />
     </Box>

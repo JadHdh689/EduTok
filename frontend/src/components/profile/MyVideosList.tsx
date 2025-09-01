@@ -1,99 +1,85 @@
-//src/components/profile/MyVideosList.tsx
+// src/pages/profile/ProfilePage.tsx
 import { useEffect, useState } from 'react';
 import {
-  Alert, Card, CardActions, CardContent, CardHeader, IconButton, Stack, Typography
+  Avatar, Box, Container, Grid, Paper, Stack, Tab, Tabs, Typography, Divider, Button
 } from '@mui/material';
-import Grid from '@mui/material/Grid'; // Grid v2
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import VideoPlayerDialog from '../video/VideoPlayerDialog'; // <-- correct path!
-import { VideosAPI } from '../../services/api';
+import { ProfileAPI } from '../../services/api';
+import ProfileEditCard from '../../components/profile/ProfileEditCard';
+import VideoUploadForm from '../../components/profile/VideoUploadForm';
+import MyVideos from '../../components/profile/MyVideos';        // ← use the upgraded component
+import MyCoursesList from '../../components/profile/MyCoursesList';
 
-type VideoRow = {
-  id: string;
-  title: string;
-  description?: string | null;
-  durationSec: number;
-  createdAt: string;
-};
+type TabKey = 'upload'|'videos'|'courses'|'edit';
 
-export default function MyVideosList() {
-  const [rows, setRows] = useState<VideoRow[]>([]);
-  const [err, setErr] = useState<string>();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [openTitle, setOpenTitle] = useState<string>('');
+export default function ProfilePage() {
+  const [tab, setTab] = useState<TabKey>('upload');
+  const [me, setMe] = useState<any>(null);
+  const [refreshFlag, setRefreshFlag] = useState(0);
 
   useEffect(() => {
     (async () => {
-      try {
-        const data = await VideosAPI.listMine();
-        setRows(data);
-      } catch (e: any) {
-        setErr(e?.response?.data?.message || e.message || 'Failed to load videos');
-      }
+      const m = await ProfileAPI.me();
+      setMe(m);
     })();
-  }, []);
+  }, [refreshFlag]);
 
-  function onPlay(v: VideoRow) {
-    setOpenTitle(v.title);
-    setOpenId(v.id);
-  }
-
-  async function onDelete(id: string) {
-    try {
-      setErr(undefined);
-      if ((VideosAPI as any).delete) {
-        await (VideosAPI as any).delete(id);
-        setRows(prev => prev.filter(r => r.id !== id));
-      }
-    } catch (e: any) {
-      setErr(e?.response?.data?.message || e.message || 'Delete failed');
-    }
+  function handleUpdated() {
+    setRefreshFlag((x)=>x+1);
   }
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="h6">My Videos</Typography>
-      {err && <Alert severity="error">{err}</Alert>}
+    <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Grid container spacing={3}>
+        {/* Left: Profile header card */}
+        <Grid item xs={12} md={4}>
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={2} alignItems="center">
+              <Avatar
+                src={me?.avatarUrl || undefined}
+                sx={{ width: 88, height: 88, fontSize: 28 }}
+              >
+                {me?.displayName?.[0]?.toUpperCase() || 'U'}
+              </Avatar>
+              <Box textAlign="center">
+                <Typography variant="h6">{me?.displayName || 'User'}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  @{me?.username}
+                </Typography>
+                {me?.email && (
+                  <Typography variant="body2" color="text.secondary">
+                    {me.email}
+                  </Typography>
+                )}
+              </Box>
+              {me?.bio && <Typography variant="body2">{me.bio}</Typography>}
+              <Divider flexItem />
+              <Button variant="outlined" onClick={()=>setTab('edit')}>Edit Profile</Button>
+            </Stack>
+          </Paper>
+        </Grid>
 
-      <Grid container spacing={2}>
-        {rows.map((v) => (
-          <Grid key={v.id} size={{ xs: 12, sm: 6, md: 4 }}>
-            <Card>
-              <CardHeader
-                title={<Typography noWrap>{v.title}</Typography>}
-                subheader={new Date(v.createdAt).toLocaleString()}
-                sx={{ pb: 0 }}
-              />
-              <CardContent sx={{ pt: 1 }}>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {v.description || ' '}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Duration: {Math.round(v.durationSec)}s
-                </Typography>
-              </CardContent>
-              <CardActions sx={{ justifyContent: 'space-between' }}>
-                <IconButton aria-label="play" onClick={() => onPlay(v)}>
-                  <PlayArrowIcon />
-                </IconButton>
-                <IconButton aria-label="delete" onClick={() => onDelete(v.id)}>
-                  <DeleteOutlineIcon />
-                </IconButton>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
+        {/* Right: Tabs content */}
+        <Grid item xs={12} md={8}>
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Tabs
+              value={tab}
+              onChange={(_e, v)=>setTab(v)}
+              variant="scrollable"
+              sx={{ mb: 2 }}
+            >
+              <Tab label="Upload Video" value="upload" />
+              <Tab label="My Videos" value="videos" />
+              <Tab label="My Courses" value="courses" />
+              <Tab label="Edit Profile" value="edit" />
+            </Tabs>
+
+            {tab === 'upload' && <VideoUploadForm onUploaded={()=>setTab('videos')} />}
+            {tab === 'videos' && <MyVideos />}                    {/* ← upgraded UI */}
+            {tab === 'courses' && <MyCoursesList />}
+            {tab === 'edit' && <ProfileEditCard me={me} onSaved={handleUpdated} />}
+          </Paper>
+        </Grid>
       </Grid>
-
-      <VideoPlayerDialog
-        open={!!openId}
-        videoId={openId}
-        title={openTitle}
-        onClose={() => setOpenId(null)}
-        onOpenComments={(id) => console.log('comments for', id)}
-        onTakeQuiz={(id) => console.log('quiz for', id)}
-      />
-    </Stack>
+    </Container>
   );
 }

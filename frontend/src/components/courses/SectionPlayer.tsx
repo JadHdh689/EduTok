@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Box, CircularProgress, IconButton, Stack, Tooltip, Typography, Badge, Button, Chip,
-  Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, FormControlLabel, Radio,
+  Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, FormControlLabel, Radio
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
@@ -12,10 +12,14 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
+import { useTheme, useMediaQuery } from '@mui/material';
 
 import { CoursesAPI, VideosAPI } from '../../services/api';
 import CommentsDrawer from '../feed/CommentsDrawer';
 
+/* ────────────────────────────────────────────────────────────────────────────
+   CourseQuizModal (unchanged logic; minor layout polish)
+   ──────────────────────────────────────────────────────────────────────────── */
 function CourseQuizModal({
   open, onClose, sectionId, videoId, onPassed,
 }: {
@@ -65,7 +69,7 @@ function CourseQuizModal({
     }
   }
 
-  const canSubmit = quiz?.questions?.every(q => !!answers[q.id]);
+  const canSubmit = !!quiz?.questions?.every(q => !!answers[q.id]);
 
   const answerDetail = useMemo(() => {
     const map = new Map<string, { selected?: string; correct?: string }>();
@@ -161,6 +165,12 @@ function CourseQuizModal({
   );
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   SectionPlayer (responsive)
+   - Uses 100dvh, safe-area insets
+   - Responsive video sizing & controls
+   - Smaller bars on mobile
+   ──────────────────────────────────────────────────────────────────────────── */
 type SectionPlayerProps = {
   courseTitle: string;
   chapterTitle: string;
@@ -170,15 +180,24 @@ type SectionPlayerProps = {
     order: number;
     video: { id: string; title: string; durationSec: number };
   };
-  onBack: () => void;      // back to outline
-  onNext?: () => void;     // advance
+  onBack: () => void;
+  onNext?: () => void;
 };
-
-const UI = { TOP: 56, BOTTOM: 110, RIGHT_STACK_GAP: 16 };
 
 export default function SectionPlayer({
   courseTitle, chapterTitle, section, onBack, onNext,
 }: SectionPlayerProps) {
+  const theme = useTheme();
+  const downSm = useMediaQuery(theme.breakpoints.down('sm'));
+  const downMd = useMediaQuery(theme.breakpoints.down('md'));
+
+  // UI chrome sizes (slightly smaller on phones)
+  const UI = {
+    TOP: downSm ? 52 : 56,
+    BOTTOM: downSm ? 84 : 110,
+    RIGHT_STACK_GAP: 16,
+  };
+
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -264,31 +283,72 @@ export default function SectionPlayer({
     }
   }
 
+  // Responsive video sizing
+  const videoSize = downSm
+    ? { maxWidth: '100%', maxHeight: '100%' }
+    : downMd
+    ? { maxWidth: '70%', maxHeight: '75%' }
+    : { maxWidth: '60%', maxHeight: '80%' };
+
   return (
-    <Box sx={{ position: 'relative', width: '100%', height: '100vh', bgcolor: 'black', overflow: 'hidden' }}>
+    <Box
+      sx={{
+        position: 'relative',
+        width: '100%',
+        height: '100dvh',                 // mobile-safe full height
+        bgcolor: 'black',
+        overflow: 'hidden',
+        pt: `max(${UI.TOP}px, env(safe-area-inset-top, 0px))`,   // ensure top bar doesn’t overlap notch
+        pb: `max(${UI.BOTTOM}px, env(safe-area-inset-bottom, 0px))`,
+      }}
+    >
       {/* Top bar */}
       <Box sx={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: UI.TOP,
+        position: 'absolute',
+        top: 0, left: 0, right: 0,
+        height: UI.TOP,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        px: 2, bgcolor: 'rgba(0,0,0,0.25)', zIndex: 2, backdropFilter: 'blur(4px)',
+        px: 1.5,
+        bgcolor: 'rgba(0,0,0,0.25)',
+        zIndex: 2,
+        backdropFilter: 'blur(4px)',
+        pt: 'env(safe-area-inset-top, 0px)',
       }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, overflow: 'hidden' }}>
           <Tooltip title="Back to outline">
-            <IconButton onClick={onBack} sx={{ color: '#fff' }}><ArrowBackIcon /></IconButton>
+            <IconButton onClick={onBack} sx={{ color: '#fff' }} size={downSm ? 'small' : 'medium'}>
+              <ArrowBackIcon />
+            </IconButton>
           </Tooltip>
-          <Typography sx={{ color: '#fff', fontWeight: 700 }} noWrap>{courseTitle}</Typography>
-          <Typography sx={{ color: '#bbb' }} noWrap>&nbsp;·&nbsp;{chapterTitle}</Typography>
+          <Typography sx={{ color: '#fff', fontWeight: 700 }} noWrap>
+            {courseTitle}
+          </Typography>
+          <Typography sx={{ color: '#bbb' }} noWrap component="span">
+            &nbsp;·&nbsp;{chapterTitle}
+          </Typography>
         </Stack>
-        <Typography sx={{ color: '#fff' }} noWrap>{section.title}</Typography>
+        <Typography sx={{ color: '#fff', ml: 2 }} noWrap>
+          {section.title}
+        </Typography>
       </Box>
 
-      {/* SAFE AREA */}
-      <Box sx={{ position: 'absolute', top: UI.TOP, bottom: UI.BOTTOM, left: 0, right: 0, overflow: 'hidden' }}>
+      {/* Video area */}
+      <Box sx={{
+        position: 'absolute',
+        top: UI.TOP,
+        bottom: UI.BOTTOM,
+        left: 0, right: 0,
+        overflow: 'hidden',
+      }}>
         <Box
           onClick={() => setPaused((p) => !p)}
           sx={{
-            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            maxWidth: '100%', maxHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'absolute',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            maxWidth: '100%', maxHeight: '100%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            px: downSm ? 1 : 0,
           }}
         >
           {err && <Alert severity="error">{err}</Alert>}
@@ -307,10 +367,9 @@ export default function SectionPlayer({
               style={{
                 width: 'auto',
                 height: 'auto',
-                maxWidth: '40%',
-                maxHeight: '50%',
                 objectFit: 'contain',
                 display: 'block',
+                ...videoSize,
               }}
             />
           )}
@@ -318,40 +377,75 @@ export default function SectionPlayer({
       </Box>
 
       {/* Right controls */}
-      <Stack spacing={2} sx={{
-        position: 'absolute', right: 12, bottom: UI.BOTTOM + UI.RIGHT_STACK_GAP,
-        zIndex: 3, alignItems: 'center'
-      }}>
+      <Stack
+        spacing={downSm ? 1 : 2}
+        sx={{
+          position: 'absolute',
+          right: 12,
+          bottom: UI.BOTTOM + (downSm ? 8 : 16),
+          zIndex: 3,
+          alignItems: 'center'
+        }}
+      >
         <Tooltip title={paused ? 'Play' : 'Pause'}>
-          <IconButton onClick={() => setPaused((p) => !p)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+          <IconButton
+            onClick={() => setPaused((p) => !p)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+            size={downSm ? 'small' : 'medium'}
+          >
             {paused ? <PauseCircleOutlineIcon /> : <PlayCircleOutlineIcon />}
           </IconButton>
         </Tooltip>
+
         <Tooltip title={liked ? 'Unlike' : 'Like'}>
           <Badge badgeContent={typeof likesCount === 'number' ? likesCount : undefined} color="error">
-            <IconButton onClick={toggleLike} sx={{ color: liked ? '#ff3b5c' : '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+            <IconButton
+              onClick={toggleLike}
+              sx={{ color: liked ? '#ff3b5c' : '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+              size={downSm ? 'small' : 'medium'}
+            >
               <FavoriteBorderIcon />
             </IconButton>
           </Badge>
         </Tooltip>
+
         <Tooltip title="Comments">
-          <IconButton onClick={() => setCommentsOpen(true)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+          <IconButton
+            onClick={() => setCommentsOpen(true)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+            size={downSm ? 'small' : 'medium'}
+          >
             <ChatBubbleOutlineIcon />
           </IconButton>
         </Tooltip>
+
         <Tooltip title={muted ? 'Unmute' : 'Mute'}>
-          <IconButton onClick={() => setMuted((m) => !m)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+          <IconButton
+            onClick={() => setMuted((m) => !m)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+            size={downSm ? 'small' : 'medium'}
+          >
             {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
           </IconButton>
         </Tooltip>
+
         <Tooltip title="Take quiz">
-          <IconButton onClick={() => setQuizOpen(true)} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+          <IconButton
+            onClick={() => setQuizOpen(true)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+            size={downSm ? 'small' : 'medium'}
+          >
             <QuizOutlinedIcon />
           </IconButton>
         </Tooltip>
+
         {onNext && (
           <Tooltip title="Next">
-            <IconButton onClick={onNext} sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}>
+            <IconButton
+              onClick={onNext}
+              sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+              size={downSm ? 'small' : 'medium'}
+            >
               <SkipNextIcon />
             </IconButton>
           </Tooltip>
@@ -359,12 +453,23 @@ export default function SectionPlayer({
       </Stack>
 
       {/* Bottom bar */}
-      <Box sx={{
-        position: 'absolute', left: 0, right: 0, bottom: 0, height: UI.BOTTOM, p: 2, zIndex: 3,
-        background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 35%, rgba(0,0,0,.85) 100%)',
-      }}>
-        <Typography sx={{ color: '#fff', fontWeight: 600 }} noWrap>{section.video.title}</Typography>
-        <Typography sx={{ color: '#ddd' }} noWrap>{chapterTitle} · {section.title}</Typography>
+      <Box
+        sx={{
+          position: 'absolute',
+          left: 0, right: 0, bottom: 0,
+          height: UI.BOTTOM,
+          p: downSm ? 1.5 : 2,
+          zIndex: 3,
+          background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 35%, rgba(0,0,0,.85) 100%)',
+          pb: `max(${downSm ? 10 : 16}px, env(safe-area-inset-bottom, 0px))`,
+        }}
+      >
+        <Typography sx={{ color: '#fff', fontWeight: 600 }} className="truncate">
+          {section.video.title}
+        </Typography>
+        <Typography sx={{ color: '#ddd' }} className="truncate">
+          {chapterTitle} · {section.title}
+        </Typography>
 
         <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography sx={{ color: '#ccc', minWidth: 42 }} variant="caption">
@@ -383,12 +488,33 @@ export default function SectionPlayer({
           </Typography>
         </Box>
 
-        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-          <Button variant="outlined" onClick={onBack} startIcon={<ArrowBackIcon />}>Back</Button>
-          <Button variant="contained" startIcon={<QuizOutlinedIcon />} onClick={() => setQuizOpen(true)}>
+        <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            onClick={onBack}
+            startIcon={<ArrowBackIcon />}
+            size={downSm ? 'small' : 'medium'}
+          >
+            Back
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<QuizOutlinedIcon />}
+            onClick={() => setQuizOpen(true)}
+            size={downSm ? 'small' : 'medium'}
+          >
             Take quiz to continue
           </Button>
-          {onNext && <Button variant="text" onClick={onNext}>Skip to next</Button>}
+          {onNext && (
+            <Button
+              variant="text"
+              onClick={onNext}
+              size={downSm ? 'small' : 'medium'}
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}  // hide on phones to save space
+            >
+              Skip to next
+            </Button>
+          )}
         </Stack>
       </Box>
 

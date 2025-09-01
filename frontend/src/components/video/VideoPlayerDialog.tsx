@@ -1,6 +1,7 @@
-//src/components/video/VideoPlayerDialog.tsx
-import React, { useEffect, useRef, useState } from 'react';
+// src/components/video/VideoPlayerDialog.tsx
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Badge,
   Box,
   CircularProgress,
   Dialog,
@@ -9,17 +10,18 @@ import {
   Stack,
   Tooltip,
   Typography,
-  Slider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import type { TransitionProps } from '@mui/material/transitions';
 import CloseIcon from '@mui/icons-material/Close';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
-import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutline';
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
-import VolumeOffIcon from '@mui/icons-material/VolumeOff';
-import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import { VideosAPI } from '../../services/api';
 
 const Transition = React.forwardRef(function Transition(
@@ -33,126 +35,189 @@ type Props = {
   open: boolean;
   videoId: string | null;
   title?: string;
+  initialMuted?: boolean; // default false; we’ll attempt unmuted first
   onClose: () => void;
-  onOpenComments?: (videoId: string) => void;
-  onTakeQuiz?: (videoId: string) => void;
+  onOpenComments?: (videoId?: string | null) => void;
+  onTakeQuiz?: (videoId?: string | null) => void;
 };
-
-function formatTime(sec: number) {
-  const s = Math.floor(sec || 0);
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${r.toString().padStart(2, '0')}`;
-}
 
 export default function VideoPlayerDialog({
   open,
   videoId,
   title,
+  initialMuted = false,
   onClose,
   onOpenComments,
   onTakeQuiz,
 }: Props) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [err, setErr] = useState<string>();
-  const [paused, setPaused] = useState(false);
-  const [liked, setLiked] = useState(false);
-  const [muted, setMuted] = useState(true);       // start muted to satisfy autoplay policies
-  const [duration, setDuration] = useState(0);
-  const [current, setCurrent] = useState(0);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // <600px
+
+  // same chrome sizing as FYP
+  const TOP = isMobile ? 48 : 56;
+  const BOTTOM = isMobile ? 96 : 110;
+  const RIGHT_GAP = isMobile ? 8 : 16;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const rafRef = useRef<number | null>(null);
 
-  // Fetch signed URL when opened for a given video
+  const [playUrl, setPlayUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string>();
+
+  const [paused, setPaused] = useState(false);
+  const [muted, setMuted] = useState<boolean>(initialMuted);
+  const [progress, setProgress] = useState(0);
+  const [durationOverride, setDurationOverride] = useState<number | null>(null);
+
+  const [liked, setLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState<number | null>(null);
+
+  // hydrate like meta for the given video
+  async function hydrateMeta(id: string) {
+    try {
+      const full = await VideosAPI.get(id);
+      const serverLikes =
+        typeof full?.likesCount === 'number'
+          ? full.likesCount
+          : typeof full?._count?.likes === 'number'
+          ? full._count.likes
+          : null;
+      setLikesCount(serverLikes);
+      setLiked(!!full?.likedByMe);
+    } catch {
+      // ignore
+    }
+  }
+
+  // load stream url on open
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!open || !videoId) return;
+      setLoading(true);
       setErr(undefined);
-      setUrl(null);
+      setPlayUrl(null);
       setPaused(false);
-      setMuted(true);           // reset to muted on each open
-      setDuration(0);
-      setCurrent(0);
+      setProgress(0);
+      setDurationOverride(null);
+      setMuted(initialMuted);
+
       try {
+        // meta first so the heart/count are ready
+        await hydrateMeta(videoId);
+
         const { url } = await VideosAPI.streamUrl(videoId);
-        if (!cancelled) setUrl(url);
+        if (!cancelled) {
+          setPlayUrl(url);
+        }
       } catch (e: any) {
         if (!cancelled) setErr(e?.response?.data?.message || e.message || 'Failed to load video');
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+      const v = videoRef.current;
+      if (v) {
+        try {
+          v.pause();
+          // eslint-disable-next-line no-empty
+        } catch {}
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, videoId]);
 
-  // Apply paused state
-  useEffect(() => {
+  // try to play with sound; if blocked, fallback to muted
+  const playRespectingAutoplay = async () => {
     const v = videoRef.current;
     if (!v) return;
-    if (paused) v.pause();
-    else v.play().catch(() => {});
-  }, [paused]);
+    try {
+      v.muted = false;
+      await v.play();
+      setMuted(false);
+      setPaused(false);
+    } catch {
+      // policy blocked: try muted
+      v.muted = true;
+      setMuted(true);
+      await v.play().catch(() => {});
+      setPaused(false);
+    }
+  };
 
-  // Apply muted state
+  // when url is ready, attempt playback
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !playUrl) return;
+    // start with user-preferred initialMuted; then try unmuted if false
+    if (initialMuted) {
+      v.muted = true;
+      v.play().catch(() => {});
+      setPaused(false);
+    } else {
+      playRespectingAutoplay();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playUrl]);
+
+  // respond to paused/muted toggles
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
     v.muted = muted;
-    // If user unmutes, ensure we’re playing (browsers require user gesture, which clicking the button is)
-    if (!muted) {
-      v.play().catch(() => {});
-    }
-  }, [muted]);
+    if (paused) v.pause();
+    else v.play().catch(() => {});
+  }, [paused, muted]);
 
-  // When URL changes, kick off autoplay (muted)
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !url) return;
-    v.muted = true;
-    v.play().catch(() => {});
-  }, [url]);
+  // progress/duration
+  const duration = useMemo(
+    () => durationOverride ?? videoRef.current?.duration ?? 0,
+    [durationOverride, playUrl],
+  );
 
-  // Track currentTime with rAF for a smooth slider
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-
-    const tick = () => {
-      if (v && !isNaN(v.currentTime)) {
-        setCurrent(v.currentTime);
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
+    const onTime = () => setProgress(v.currentTime || 0);
+    const onMeta = () => setDurationOverride(v.duration || 0);
+    v.addEventListener('timeupdate', onTime);
+    v.addEventListener('loadedmetadata', onMeta);
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+      v.removeEventListener('timeupdate', onTime);
+      v.removeEventListener('loadedmetadata', onMeta);
     };
-  }, [url]);
+  }, [playUrl]);
 
-  // Handlers
-  const onLoadedMetadata = () => {
+  const onSeek = (secs: number) => {
     const v = videoRef.current;
     if (!v) return;
-    setDuration(v.duration || 0);
+    v.currentTime = Math.max(0, Math.min(secs, v.duration || secs));
+    setProgress(v.currentTime);
   };
 
-  const onSeek = (_: Event, value: number | number[]) => {
-    // live update the thumb label while dragging
-    if (typeof value === 'number') setCurrent(value);
-  };
+  async function toggleLike() {
+    if (!videoId) return;
+    const wantLike = !liked;
+    const nextCount = typeof likesCount === 'number' ? likesCount + (wantLike ? 1 : -1) : null;
 
-  const onSeekCommit = (_: Event, value: number | number[]) => {
-    const v = videoRef.current;
-    if (!v || typeof value !== 'number') return;
-    v.currentTime = value;
-  };
+    setLiked(wantLike);
+    if (nextCount !== null) setLikesCount(nextCount);
 
-  const toggleMute = () => setMuted((m) => !m);
+    try {
+      if (wantLike) await VideosAPI.like(videoId);
+      else await VideosAPI.unlike(videoId);
+      await hydrateMeta(videoId);
+    } catch {
+      // revert
+      const prevLiked = !wantLike;
+      const reverted = typeof likesCount === 'number' ? likesCount + (wantLike ? -1 : 1) : null;
+      setLiked(prevLiked);
+      if (reverted !== null) setLikesCount(reverted);
+    }
+  }
 
   return (
     <Dialog
@@ -161,25 +226,29 @@ export default function VideoPlayerDialog({
       onClose={onClose}
       TransitionComponent={Transition}
       PaperProps={{ sx: { bgcolor: 'black' } }}
+      keepMounted
+      disableRestoreFocus
     >
-      {/* Top bar */}
+      {/* Top bar (like FYP) */}
       <Box
         sx={{
-          position: 'fixed',
+          position: 'absolute',
           top: 0,
           left: 0,
           right: 0,
-          height: 56,
+          height: TOP,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          px: 1,
-          zIndex: 2,
+          px: 2,
           bgcolor: 'rgba(0,0,0,0.25)',
+          zIndex: 3,
           backdropFilter: 'blur(4px)',
+          gap: 1,
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <Typography sx={{ color: '#fff', fontWeight: 600, px: 1 }} noWrap>
+        <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: isMobile ? 16 : 18 }} noWrap>
           {title || 'Video'}
         </Typography>
         <IconButton onClick={onClose} sx={{ color: '#fff' }}>
@@ -187,111 +256,116 @@ export default function VideoPlayerDialog({
         </IconButton>
       </Box>
 
-      {/* Video area */}
+      {/* SAFE AREA for video */}
       <Box
         sx={{
-          position: 'fixed',
-          inset: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          position: 'absolute',
+          top: TOP,
+          bottom: BOTTOM,
+          left: 0,
+          right: 0,
+          overflow: 'hidden',
         }}
         onClick={() => setPaused((p) => !p)}
       >
-        {err && <Typography sx={{ color: '#ff6b6b' }}>{err}</Typography>}
-        {!err && !url && <CircularProgress sx={{ color: '#fff' }} />}
-        {url && (
-          <video
-            key={url}
-            ref={videoRef}
-            src={url}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            crossOrigin="anonymous"
-            onLoadedMetadata={onLoadedMetadata}
-            onError={() => setErr('Could not load video')}
-            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-          />
-        )}
-        {paused && !err && url && (
-          <PlayCircleOutlineIcon
-            sx={{ position: 'absolute', fontSize: 96, color: '#fff' }}
-          />
-        )}
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {err && <Typography sx={{ color: '#ff6b6b' }}>{err}</Typography>}
+          {!err && loading && <CircularProgress sx={{ color: '#fff' }} />}
+
+          {!loading && playUrl && (
+            <video
+              key={playUrl}
+              ref={videoRef}
+              src={playUrl}
+              autoPlay
+              muted={muted}
+              playsInline
+              preload="auto"
+              onEnded={() => setPaused(true)}
+              onError={() => setErr('Could not load video')}
+              style={{
+                // Desktop centers a contained box; Mobile fills area
+                width: isMobile ? '100%' : 'auto',
+                height: isMobile ? '100%' : 'auto',
+                maxWidth: isMobile ? '100%' : '40%',
+                maxHeight: isMobile ? '100%' : '50%',
+                objectFit: 'contain',
+                display: 'block',
+              }}
+            />
+          )}
+
+          {/* Big play overlay when paused */}
+          {paused && !err && playUrl && (
+            <PlayCircleOutlineIcon
+              sx={{ position: 'absolute', fontSize: 96, color: '#fff', pointerEvents: 'none' }}
+            />
+          )}
+        </Box>
       </Box>
 
-      {/* Right-side buttons */}
+      {/* Right controls (desktop) */}
       <Stack
         spacing={2}
         sx={{
-          position: 'fixed',
+          position: 'absolute',
           right: 12,
-          bottom: 112,
-          zIndex: 2,
+          bottom: BOTTOM + RIGHT_GAP,
+          zIndex: 4,
           alignItems: 'center',
-          color: '#fff',
+          display: { xs: 'none', sm: 'flex' }, // hide on mobile
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <Tooltip title={paused ? 'Play' : 'Pause'}>
           <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              setPaused((p) => !p);
-            }}
+            onClick={() => setPaused((p) => !p)}
             sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
           >
-            {paused ? <PlayCircleOutlineIcon /> : <PauseCircleOutlineIcon />}
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title={muted ? 'Unmute' : 'Mute'}>
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleMute();
-            }}
-            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
-          >
-            {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
+            {paused ? <PauseCircleOutlineIcon /> : <PlayCircleOutlineIcon />}
           </IconButton>
         </Tooltip>
 
         <Tooltip title={liked ? 'Unlike' : 'Like'}>
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              setLiked((v) => !v);
-            }}
-            sx={{
-              color: liked ? '#ff3b5c' : '#fff',
-              bgcolor: 'rgba(255,255,255,0.12)',
-            }}
-          >
-            <FavoriteBorderIcon />
-          </IconButton>
+          <Badge badgeContent={typeof likesCount === 'number' ? likesCount : undefined} color="error">
+            <IconButton
+              onClick={toggleLike}
+              sx={{ color: liked ? '#ff3b5c' : '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+            >
+              <FavoriteBorderIcon />
+            </IconButton>
+          </Badge>
         </Tooltip>
 
         <Tooltip title="Comments">
           <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              videoId && onOpenComments?.(videoId);
-            }}
+            onClick={() => onOpenComments?.(videoId)}
             sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
           >
             <ChatBubbleOutlineIcon />
           </IconButton>
         </Tooltip>
 
+        <Tooltip title={muted ? 'Unmute' : 'Mute'}>
+          <IconButton
+            onClick={() => setMuted((m) => !m)}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+          >
+            {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
+          </IconButton>
+        </Tooltip>
+
         <Tooltip title="Take quiz">
           <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              videoId && onTakeQuiz?.(videoId);
-            }}
+            onClick={() => onTakeQuiz?.(videoId)}
             sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
           >
             <QuizOutlinedIcon />
@@ -299,45 +373,91 @@ export default function VideoPlayerDialog({
         </Tooltip>
       </Stack>
 
-      {/* Bottom gradient, title, and seek bar */}
+      {/* Bottom *row* controls (mobile) */}
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          position: 'absolute',
+          left: 8,
+          right: 8,
+          bottom: BOTTOM + 8,
+          zIndex: 4,
+          display: { xs: 'flex', sm: 'none' },
+          justifyContent: 'center',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <IconButton
+          onClick={() => setPaused((p) => !p)}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          {paused ? <PauseCircleOutlineIcon /> : <PlayCircleOutlineIcon />}
+        </IconButton>
+        <IconButton
+          onClick={toggleLike}
+          sx={{ color: liked ? '#ff3b5c' : '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          <FavoriteBorderIcon />
+        </IconButton>
+        <IconButton
+          onClick={() => onOpenComments?.(videoId)}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          <ChatBubbleOutlineIcon />
+        </IconButton>
+        <IconButton
+          onClick={() => setMuted((m) => !m)}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
+        </IconButton>
+        <IconButton
+          onClick={() => onTakeQuiz?.(videoId)}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+        >
+          <QuizOutlinedIcon />
+        </IconButton>
+      </Stack>
+
+      {/* Bottom bar (title + scrubber) */}
       <Box
         sx={{
-          position: 'fixed',
+          position: 'absolute',
           left: 0,
           right: 0,
           bottom: 0,
-          pt: 2,
-          pb: 2,
-          px: 2,
+          height: BOTTOM,
+          p: { xs: 1.25, sm: 2 },
+          zIndex: 3,
           background:
             'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 35%, rgba(0,0,0,.85) 100%)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <Typography sx={{ color: '#fff', mb: 1 }} noWrap>
+        <Typography
+          sx={{ color: '#fff', fontWeight: 600, fontSize: isMobile ? 14 : 16 }}
+          noWrap
+        >
           {title || 'Video'}
         </Typography>
 
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Typography variant="caption" sx={{ color: '#fff', width: 36, textAlign: 'right' }}>
-            {formatTime(current)}
+        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography sx={{ color: '#ccc', minWidth: 38 }} variant="caption">
+            {Math.floor(progress)}s
           </Typography>
-          <Slider
-            value={Math.min(current, duration || 0)}
+          <input
+            type="range"
             min={0}
-            max={duration || 0}
-            step={0.1}
-            onChange={onSeek}
-            onChangeCommitted={onSeekCommit}
-            sx={{
-              color: '#fff',
-              '& .MuiSlider-thumb': { width: 10, height: 10 },
-            }}
+            max={Math.max(1, duration || 1)}
+            value={progress}
+            onChange={(e) => onSeek(Number(e.target.value))}
+            style={{ width: '100%' }}
           />
-          <Typography variant="caption" sx={{ color: '#fff', width: 36 }}>
-            {formatTime(duration)}
+          <Typography sx={{ color: '#ccc', minWidth: 38, textAlign: 'right' }} variant="caption">
+            {Math.floor(duration || 0)}s
           </Typography>
-        </Stack>
+        </Box>
       </Box>
     </Dialog>
   );
