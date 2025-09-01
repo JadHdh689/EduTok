@@ -1,7 +1,7 @@
-//src/pages/auth/SignUp.tsx
+// src/pages/auth/SignUp.tsx
 import { useState } from 'react';
 import { Alert, Stack, TextField, Typography, Link } from '@mui/material';
-import { AuthAPI } from '../../services/api';
+import { AuthAPI, ProfileAPI } from '../../services/api';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import AuthLayout from '../../components/AuthLayout';
 import PasswordField from '../../components/PasswordField';
@@ -9,20 +9,27 @@ import LoadingButton from '../../components/LoadingButton';
 
 const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
-export default function SignUpPage(){
+export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [handle, setHandle] = useState('');
   const [password, setPassword] = useState('');
-  const [err, setErr] = useState<string|undefined>();
+  const [err, setErr] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const nav = useNavigate();
 
-  async function onSubmit(){
+  async function onSubmit() {
     setErr(undefined);
-    if (!isEmail(email)) { setErr('Please enter a valid email'); return; }
+    if (!isEmail(email)) {
+      setErr('Please enter a valid email');
+      return;
+    }
     setLoading(true);
     try {
+      // Step 1: Create Cognito account
       await AuthAPI.signUp(email, password, handle || undefined);
+
+
+      // Step 3: Redirect to confirm page
       nav(`/confirm?u=${encodeURIComponent(email.trim().toLowerCase())}`);
     } catch (e: any) {
       setErr(e?.response?.data?.message || e.message || 'Sign up failed');
@@ -32,7 +39,10 @@ export default function SignUpPage(){
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Use your email as the sign-in username.">
+    <AuthLayout
+      title="Create your account"
+      subtitle="Use your email as the sign-in username."
+    >
       <Stack spacing={2}>
         {err && <Alert severity="error">{err}</Alert>}
         <TextField
@@ -46,14 +56,6 @@ export default function SignUpPage(){
           error={!!email && !isEmail(email)}
           helperText={!!email && !isEmail(email) ? 'Enter a valid email' : ' '}
         />
-        <TextField
-          label="Display handle (optional)"
-          value={handle}
-          onChange={(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-            setHandle(e.target.value)
-          }
-          fullWidth
-        />
         <PasswordField
           label="Password"
           value={password}
@@ -66,7 +68,10 @@ export default function SignUpPage(){
           Sign Up
         </LoadingButton>
         <Typography variant="body2">
-          Already have an account? <Link component={RouterLink} to="/login">Sign in</Link>
+          Already have an account?{' '}
+          <Link component={RouterLink} to="/login">
+            Sign in
+          </Link>
         </Typography>
       </Stack>
     </AuthLayout>

@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { ProfileAPI, PublicProfilesAPI } from '../../services/api';
 import ProfileEditCard from '../../components/profile/ProfileEditCard';
 import VideoUploadForm from '../../components/profile/VideoUploadForm';
-import MyVideosList from '../../components/profile/MyVideosList';
+import MyVideos from '../../components/profile/MyVideos';
 import MyCoursesList from '../../components/profile/MyCoursesList';
 
 type TabKey = 'upload'|'videos'|'courses'|'edit'|'followers'|'following';
@@ -159,7 +159,7 @@ export default function ProfilePage() {
             </Tabs>
 
             {tab === 'upload' && <VideoUploadForm onUploaded={()=>setTab('videos')} />}
-            {tab === 'videos' && <MyVideosList />}
+            {tab === 'videos' && <MyVideos />}
             {tab === 'courses' && <MyCoursesList />}
             {tab === 'edit' && <ProfileEditCard me={me} onSaved={handleUpdated} />}
 
