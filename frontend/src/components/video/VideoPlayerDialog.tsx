@@ -1,7 +1,6 @@
 // src/components/video/VideoPlayerDialog.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Badge,
   Box,
   CircularProgress,
   Dialog,
@@ -10,6 +9,7 @@ import {
   Stack,
   Tooltip,
   Typography,
+  Badge,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -35,7 +35,8 @@ type Props = {
   open: boolean;
   videoId: string | null;
   title?: string;
-  initialMuted?: boolean; // default false; we’ll attempt unmuted first
+  /** If true, start muted. If false (default), try unmuted first then fall back to muted if autoplay is blocked. */
+  initialMuted?: boolean;
   onClose: () => void;
   onOpenComments?: (videoId?: string | null) => void;
   onTakeQuiz?: (videoId?: string | null) => void;
@@ -53,7 +54,7 @@ export default function VideoPlayerDialog({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // <600px
 
-  // same chrome sizing as FYP
+  // match FYP chrome sizing
   const TOP = isMobile ? 48 : 56;
   const BOTTOM = isMobile ? 96 : 110;
   const RIGHT_GAP = isMobile ? 8 : 16;
@@ -72,7 +73,6 @@ export default function VideoPlayerDialog({
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState<number | null>(null);
 
-  // hydrate like meta for the given video
   async function hydrateMeta(id: string) {
     try {
       const full = await VideosAPI.get(id);
@@ -82,14 +82,14 @@ export default function VideoPlayerDialog({
           : typeof full?._count?.likes === 'number'
           ? full._count.likes
           : null;
-      setLikesCount(serverLikes);
+      setLikesCount(serverLikes ?? null);
       setLiked(!!full?.likedByMe);
     } catch {
-      // ignore
+      // ignore meta errors
     }
   }
 
-  // load stream url on open
+  // load on open
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -103,13 +103,9 @@ export default function VideoPlayerDialog({
       setMuted(initialMuted);
 
       try {
-        // meta first so the heart/count are ready
         await hydrateMeta(videoId);
-
         const { url } = await VideosAPI.streamUrl(videoId);
-        if (!cancelled) {
-          setPlayUrl(url);
-        }
+        if (!cancelled) setPlayUrl(url);
       } catch (e: any) {
         if (!cancelled) setErr(e?.response?.data?.message || e.message || 'Failed to load video');
       } finally {
@@ -123,14 +119,13 @@ export default function VideoPlayerDialog({
       if (v) {
         try {
           v.pause();
-          // eslint-disable-next-line no-empty
         } catch {}
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, videoId]);
 
-  // try to play with sound; if blocked, fallback to muted
+  // try unmuted first if allowed by browser policy; else fall back to muted
   const playRespectingAutoplay = async () => {
     const v = videoRef.current;
     if (!v) return;
@@ -140,7 +135,6 @@ export default function VideoPlayerDialog({
       setMuted(false);
       setPaused(false);
     } catch {
-      // policy blocked: try muted
       v.muted = true;
       setMuted(true);
       await v.play().catch(() => {});
@@ -148,11 +142,10 @@ export default function VideoPlayerDialog({
     }
   };
 
-  // when url is ready, attempt playback
+  // when url ready, kick playback
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !playUrl) return;
-    // start with user-preferred initialMuted; then try unmuted if false
     if (initialMuted) {
       v.muted = true;
       v.play().catch(() => {});
@@ -172,7 +165,7 @@ export default function VideoPlayerDialog({
     else v.play().catch(() => {});
   }, [paused, muted]);
 
-  // progress/duration
+  // duration/progress
   const duration = useMemo(
     () => durationOverride ?? videoRef.current?.duration ?? 0,
     [durationOverride, playUrl],
@@ -209,9 +202,8 @@ export default function VideoPlayerDialog({
     try {
       if (wantLike) await VideosAPI.like(videoId);
       else await VideosAPI.unlike(videoId);
-      await hydrateMeta(videoId);
+      await hydrateMeta(videoId); // authoritative reconciliation
     } catch {
-      // revert
       const prevLiked = !wantLike;
       const reverted = typeof likesCount === 'number' ? likesCount + (wantLike ? -1 : 1) : null;
       setLiked(prevLiked);
@@ -229,7 +221,7 @@ export default function VideoPlayerDialog({
       keepMounted
       disableRestoreFocus
     >
-      {/* Top bar (like FYP) */}
+      {/* Top bar */}
       <Box
         sx={{
           position: 'absolute',
@@ -256,7 +248,7 @@ export default function VideoPlayerDialog({
         </IconButton>
       </Box>
 
-      {/* SAFE AREA for video */}
+      {/* Video safe area */}
       <Box
         sx={{
           position: 'absolute',
@@ -292,7 +284,6 @@ export default function VideoPlayerDialog({
               onEnded={() => setPaused(true)}
               onError={() => setErr('Could not load video')}
               style={{
-                // Desktop centers a contained box; Mobile fills area
                 width: isMobile ? '100%' : 'auto',
                 height: isMobile ? '100%' : 'auto',
                 maxWidth: isMobile ? '100%' : '40%',
@@ -303,7 +294,6 @@ export default function VideoPlayerDialog({
             />
           )}
 
-          {/* Big play overlay when paused */}
           {paused && !err && playUrl && (
             <PlayCircleOutlineIcon
               sx={{ position: 'absolute', fontSize: 96, color: '#fff', pointerEvents: 'none' }}
@@ -321,7 +311,7 @@ export default function VideoPlayerDialog({
           bottom: BOTTOM + RIGHT_GAP,
           zIndex: 4,
           alignItems: 'center',
-          display: { xs: 'none', sm: 'flex' }, // hide on mobile
+          display: { xs: 'none', sm: 'flex' },
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -347,7 +337,10 @@ export default function VideoPlayerDialog({
 
         <Tooltip title="Comments">
           <IconButton
-            onClick={() => onOpenComments?.(videoId)}
+            onClick={() => {
+              setPaused(true);
+              onOpenComments?.(videoId);
+            }}
             sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
           >
             <ChatBubbleOutlineIcon />
@@ -365,7 +358,10 @@ export default function VideoPlayerDialog({
 
         <Tooltip title="Take quiz">
           <IconButton
-            onClick={() => onTakeQuiz?.(videoId)}
+            onClick={() => {
+              setPaused(true);
+              onTakeQuiz?.(videoId);
+            }}
             sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
           >
             <QuizOutlinedIcon />
@@ -373,7 +369,7 @@ export default function VideoPlayerDialog({
         </Tooltip>
       </Stack>
 
-      {/* Bottom *row* controls (mobile) */}
+      {/* Bottom controls (mobile) */}
       <Stack
         direction="row"
         spacing={1}
@@ -401,7 +397,10 @@ export default function VideoPlayerDialog({
           <FavoriteBorderIcon />
         </IconButton>
         <IconButton
-          onClick={() => onOpenComments?.(videoId)}
+          onClick={() => {
+            setPaused(true);
+            onOpenComments?.(videoId);
+          }}
           sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
         >
           <ChatBubbleOutlineIcon />
@@ -413,7 +412,10 @@ export default function VideoPlayerDialog({
           {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
         </IconButton>
         <IconButton
-          onClick={() => onTakeQuiz?.(videoId)}
+          onClick={() => {
+            setPaused(true);
+            onTakeQuiz?.(videoId);
+          }}
           sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
         >
           <QuizOutlinedIcon />
