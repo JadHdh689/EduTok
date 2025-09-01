@@ -69,7 +69,6 @@ export default function FypViewer() {
   const [quizOpen, setQuizOpen] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const lastIdRef = useRef<string | null>(null);
 
   // keep like state snappy across switches
   const likeCacheRef = useRef<Map<string, { liked: boolean; count: number | null }>>(new Map());
@@ -108,17 +107,21 @@ export default function FypViewer() {
     }
   }
 
-  const fetchNext = async (explicitExcludeId?: string) => {
+  /**
+   * FETCH NEXT:
+   * - Pass an explicit `excludeId` ONLY when you want to skip the current video
+   *   (e.g., user pressed Next, or current video ended).
+   * - On initial load or category change, call without exclude → no cross-category exclusion.
+   */
+  const fetchNext = async (excludeId?: string | null) => {
     setLoading(true);
     setErr(undefined);
     setPlayUrl(null);
     setItem(null);
     try {
-      const exclude = explicitExcludeId ?? lastIdRef.current ?? undefined;
-      const next = await FeedAPI.next(catId ? Number(catId) : undefined, exclude);
+      const next = await FeedAPI.next(catId ? Number(catId) : undefined, excludeId || undefined);
 
       setItem(next);
-      lastIdRef.current = next.id;
 
       // use cached like state instantly
       const cached = likeCacheRef.current.get(next.id);
@@ -143,8 +146,9 @@ export default function FypViewer() {
     }
   };
 
+  // On category change: DO NOT exclude the previously watched video.
   useEffect(() => {
-    fetchNext(undefined);
+    fetchNext(null); // no exclusion when switching categories
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catId]);
 
@@ -299,7 +303,7 @@ export default function FypViewer() {
               loop={false}
               playsInline
               preload="auto"
-              onEnded={() => fetchNext(item?.id || undefined)}
+              onEnded={() => fetchNext(item?.id || null)} // exclude only on explicit "next"
               style={{
                 // Desktop centers a contained box; Mobile fills area
                 width: isMobile ? '100%' : 'auto',
@@ -366,7 +370,7 @@ export default function FypViewer() {
 
         <Tooltip title="Next">
           <IconButton
-            onClick={() => fetchNext(item?.id)}
+            onClick={() => fetchNext(item?.id || null)} // exclude only when user explicitly hits Next
             sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
           >
             <SkipNextIcon />
@@ -413,7 +417,7 @@ export default function FypViewer() {
           {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
         </IconButton>
         <IconButton
-          onClick={() => fetchNext(item?.id)}
+          onClick={() => fetchNext(item?.id || null)} // exclude only on explicit next
           sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
         >
           <SkipNextIcon />
