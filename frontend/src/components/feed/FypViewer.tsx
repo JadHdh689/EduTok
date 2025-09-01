@@ -41,10 +41,9 @@ type FeedItem = {
 
 export default function FypViewer() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // <600px
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const nav = useNavigate();
 
-  // Scale UI chrome with breakpoint
   const TOP = isMobile ? 48 : 56;
   const BOTTOM = isMobile ? 96 : 110;
   const RIGHT_GAP = isMobile ? 8 : 16;
@@ -69,8 +68,6 @@ export default function FypViewer() {
   const [quizOpen, setQuizOpen] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  // keep like state snappy across switches
   const likeCacheRef = useRef<Map<string, { liked: boolean; count: number | null }>>(new Map());
 
   useEffect(() => {
@@ -107,12 +104,7 @@ export default function FypViewer() {
     }
   }
 
-  /**
-   * FETCH NEXT:
-   * - Pass an explicit `excludeId` ONLY when you want to skip the current video
-   *   (e.g., user pressed Next, or current video ended).
-   * - On initial load or category change, call without exclude → no cross-category exclusion.
-   */
+  // fetch next; exclude only when explicitly skipping the current one
   const fetchNext = async (excludeId?: string | null) => {
     setLoading(true);
     setErr(undefined);
@@ -123,7 +115,6 @@ export default function FypViewer() {
 
       setItem(next);
 
-      // use cached like state instantly
       const cached = likeCacheRef.current.get(next.id);
       if (cached) {
         setLiked(cached.liked);
@@ -146,9 +137,9 @@ export default function FypViewer() {
     }
   };
 
-  // On category change: DO NOT exclude the previously watched video.
+  // on category change → no exclusion
   useEffect(() => {
-    fetchNext(null); // no exclusion when switching categories
+    fetchNext(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catId]);
 
@@ -206,7 +197,7 @@ export default function FypViewer() {
       sx={{
         position: 'relative',
         width: '100%',
-        height: '100dvh', // better mobile vh
+        height: '100dvh',
         bgcolor: 'black',
         overflow: 'hidden',
         pb: 'var(--safe-bottom)',
@@ -268,7 +259,7 @@ export default function FypViewer() {
         </TextField>
       </Box>
 
-      {/* SAFE AREA for video */}
+      {/* Video area */}
       <Box
         sx={{
           position: 'absolute',
@@ -279,7 +270,6 @@ export default function FypViewer() {
           overflow: 'hidden',
         }}
       >
-        {/* Click anywhere to toggle play/pause */}
         <Box
           onClick={() => setPaused((p) => !p)}
           sx={{
@@ -303,9 +293,8 @@ export default function FypViewer() {
               loop={false}
               playsInline
               preload="auto"
-              onEnded={() => fetchNext(item?.id || null)} // exclude only on explicit "next"
+              onEnded={() => fetchNext(item?.id || null)}
               style={{
-                // Desktop centers a contained box; Mobile fills area
                 width: isMobile ? '100%' : 'auto',
                 height: isMobile ? '100%' : 'auto',
                 maxWidth: isMobile ? '100%' : '40%',
@@ -327,7 +316,7 @@ export default function FypViewer() {
           bottom: BOTTOM + RIGHT_GAP,
           zIndex: 3,
           alignItems: 'center',
-          display: { xs: 'none', sm: 'flex' }, // hide on mobile
+          display: { xs: 'none', sm: 'flex' },
         }}
       >
         <Tooltip title={paused ? 'Play' : 'Pause'}>
@@ -359,6 +348,20 @@ export default function FypViewer() {
           </IconButton>
         </Tooltip>
 
+        {/* ✅ QUIZ BUTTON (desktop) */}
+        <Tooltip title="Quiz">
+          <IconButton
+            onClick={() => {
+              setPaused(true); // pause playback while quizzing
+              setQuizOpen(true);
+            }}
+            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+            disabled={!item}
+          >
+            <QuizOutlinedIcon />
+          </IconButton>
+        </Tooltip>
+
         <Tooltip title={muted ? 'Unmute' : 'Mute'}>
           <IconButton
             onClick={() => setMuted((m) => !m)}
@@ -370,7 +373,7 @@ export default function FypViewer() {
 
         <Tooltip title="Next">
           <IconButton
-            onClick={() => fetchNext(item?.id || null)} // exclude only when user explicitly hits Next
+            onClick={() => fetchNext(item?.id || null)}
             sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
           >
             <SkipNextIcon />
@@ -378,7 +381,7 @@ export default function FypViewer() {
         </Tooltip>
       </Stack>
 
-      {/* Bottom *row* of controls (mobile only) */}
+      {/* Bottom controls (mobile) */}
       <Stack
         direction="row"
         spacing={1}
@@ -410,6 +413,19 @@ export default function FypViewer() {
         >
           <ChatBubbleOutlineIcon />
         </IconButton>
+
+        {/* ✅ QUIZ BUTTON (mobile) */}
+        <IconButton
+          onClick={() => {
+            setPaused(true);
+            setQuizOpen(true);
+          }}
+          sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
+          disabled={!item}
+        >
+          <QuizOutlinedIcon />
+        </IconButton>
+
         <IconButton
           onClick={() => setMuted((m) => !m)}
           sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
@@ -417,7 +433,7 @@ export default function FypViewer() {
           {muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
         </IconButton>
         <IconButton
-          onClick={() => fetchNext(item?.id || null)} // exclude only on explicit next
+          onClick={() => fetchNext(item?.id || null)}
           sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
         >
           <SkipNextIcon />
@@ -440,14 +456,10 @@ export default function FypViewer() {
       >
         {item && (
           <>
-            <Typography
-              sx={{ color: '#fff', fontWeight: 600, fontSize: isMobile ? 14 : 16 }}
-              noWrap
-            >
+            <Typography sx={{ color: '#fff', fontWeight: 600, fontSize: isMobile ? 14 : 16 }} noWrap>
               {item.title}
             </Typography>
             <Typography sx={{ color: '#ddd', fontSize: isMobile ? 12 : 14 }} noWrap>
-              {/* Tap author name to go to profile */}
               <span
                 style={{ textDecoration: 'underline', cursor: 'pointer' }}
                 onClick={(e) => {
@@ -473,10 +485,7 @@ export default function FypViewer() {
                 onChange={(e) => onSeek(Number(e.target.value))}
                 style={{ width: '100%' }}
               />
-              <Typography
-                sx={{ color: '#ccc', minWidth: 38, textAlign: 'right' }}
-                variant="caption"
-              >
+              <Typography sx={{ color: '#ccc', minWidth: 38, textAlign: 'right' }} variant="caption">
                 {Math.floor(duration || item.durationSec || 0)}s
               </Typography>
             </Box>
