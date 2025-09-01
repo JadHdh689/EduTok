@@ -1,3 +1,4 @@
+// src/routes/ProfileCourses.tsx
 import React, { lazy, Suspense } from 'react';
 import { type RouteObject, useParams } from 'react-router-dom';
 

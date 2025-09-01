@@ -1,3 +1,4 @@
+// components/profile/MyCoursesList.tsx
 import { useEffect, useState } from 'react';
 import {
   Box,

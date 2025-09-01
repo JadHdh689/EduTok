@@ -1,3 +1,4 @@
+// src/components/feed/FypViewer.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Box, CircularProgress, IconButton, MenuItem, Stack, TextField, Tooltip, Typography, Badge

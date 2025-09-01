@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -27,6 +28,9 @@ import CoursePublicPage from './pages/courses/CoursePublicPage';
 
 // NEW: section page to keep users inside the course flow
 import SectionPage from './pages/courses/SectionPage';
+
+// NEW: final exam page (opens learner modal)
+import CourseFinalPage from './pages/courses/CourseFinal';
 
 // simple placeholder
 function FollowingPage() {
@@ -70,6 +74,9 @@ export default function App() {
 
             {/* >>> This keeps the learner INSIDE the course (no feed fallback) <<< */}
             <Route path="/courses/:id/sections/:sectionId" element={<SectionPage />} />
+
+            {/* NEW: final exam route for learners */}
+            <Route path="/courses/:id/final" element={<CourseFinalPage />} />
 
             {/* ===== Profile → Courses authoring/management ===== */}
             <Route path="/profile/courses" element={<MyCoursesList />} />

@@ -1,3 +1,4 @@
+// src/components/courses/VideoPickerDialog.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Box, CircularProgress, IconButton, Stack, Tooltip, Typography, Badge, Button,
@@ -265,8 +266,8 @@ export default function SectionPlayer({
               style={{
                 width: 'auto',
                 height: 'auto',
-                maxWidth: '40%',
-                maxHeight: '50%',
+                maxWidth: '50%',
+                maxHeight: '60%',
                 objectFit: 'contain',
                 display: 'block',
               }}

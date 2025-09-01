@@ -1,3 +1,4 @@
+// src/components/courses/EnrollButton.tsx
 import { useState } from 'react';
 import { Button } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';

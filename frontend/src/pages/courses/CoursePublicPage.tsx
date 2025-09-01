@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box, Button, Chip, Divider, Stack, Typography, Avatar, CircularProgress, Alert, IconButton,
 } from '@mui/material';
@@ -6,6 +6,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CoursesAPI } from '../../services/api';
+import FinalQuizModal from '../../components/courses/FinalQuizModal';
 
 export default function CoursePublicPage() {
   const { id } = useParams();
@@ -15,6 +16,7 @@ export default function CoursePublicPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string>();
   const [enrolled, setEnrolled] = useState(false);
+  const [finalOpen, setFinalOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -53,16 +55,24 @@ export default function CoursePublicPage() {
     [course]
   );
 
+  const finalQuiz = useMemo(
+    () => (course?.quizzes || []).find((q: any) => String(q?.title || '').toLowerCase().includes('final')),
+    [course]
+  );
+
   function startSection(sec: any) {
     if (!id) return;
     navigate(`/courses/${id}/sections/${sec.id}`, {
       state: {
         courseTitle: course?.title,
-        // If your section player wants this, pass chapter title from the outline:
         chapterTitle:
           course?.chapters?.find((ch: any) => ch.sections?.some((s: any) => s.id === sec.id))?.title ?? '',
       },
     });
+  }
+
+  function openFinal() {
+    setFinalOpen(true);
   }
 
   if (loading) {
@@ -135,6 +145,16 @@ export default function CoursePublicPage() {
                 Start learning
               </Button>
             )}
+            {finalQuiz && (
+              <Button
+                variant="outlined"
+                onClick={openFinal}
+                disabled={!enrolled}
+                title={enrolled ? 'Open final exam' : 'Enroll to take the final'}
+              >
+                Final Exam
+              </Button>
+            )}
           </Stack>
 
           <Divider sx={{ my: 2 }} />
@@ -170,9 +190,38 @@ export default function CoursePublicPage() {
                   </Stack>
                 </Box>
               ))}
+
+            {finalQuiz && (
+              <Box sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}>
+                <Box sx={{ p: 1.5, bgcolor: 'grey.50', borderBottom: '1px dashed', borderColor: 'divider' }}>
+                  <Typography variant="subtitle2">Final Exam</Typography>
+                </Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 1 }}>
+                  <Typography variant="body2" noWrap>
+                    {finalQuiz.title || 'Final Exam'}
+                  </Typography>
+                  <Button size="small" onClick={openFinal} disabled={!enrolled}>
+                    Open
+                  </Button>
+                </Stack>
+              </Box>
+            )}
           </Stack>
         </Box>
       </Stack>
+
+      {/* Final Exam Modal */}
+      {id && (
+        <FinalQuizModal
+          open={finalOpen}
+          onClose={() => setFinalOpen(false)}
+          courseId={id}
+          onSubmitted={(passed) => {
+            // optional toast, refresh progress, etc.
+            if (passed) setFinalOpen(false);
+          }}
+        />
+      )}
     </Box>
   );
 }
