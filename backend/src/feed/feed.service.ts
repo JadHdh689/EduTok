@@ -7,15 +7,27 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class FeedService {
   constructor(private prisma: PrismaService) {}
 
+  private readonly videoSelect = {
+    id: true,
+    title: true,
+    description: true,
+    durationSec: true,
+    s3Bucket: true,
+    s3Key: true,
+    createdAt: true,
+    category: { select: { id: true, name: true } },
+    author: {
+      select: { id: true, username: true, displayName: true, avatarUrl: true },
+    },
+  } as const;
+
   /**
-   * Return ONE next video by:
-   *  - applying categoryId filter if provided (or "All" if not)
-   *  - excluding anything the user has already seen
-   *  - choosing a random unseen video
-   * Fallbacks:
-   *  - if none in the category -> try "All"
-   *  - if still none -> least-recently-seen (recycle)
-   *  - if still none -> any random PUBLIC video
+   * If categoryId is provided:
+   *  - pick a random unseen PUBLIC video in that category
+   *  - if none, recycle the least-recently-seen video **in that category**
+   *  - if still none, 404
+   * If no categoryId:
+   *  - original behavior (unseen → recycle oldest → any PUBLIC)
    */
   async next(authSub?: string, categoryId?: number, excludeId?: string) {
     const me = authSub
@@ -36,44 +48,48 @@ export class FeedService {
 
     const whereBase = (cat?: number): Prisma.VideoWhereInput => ({
       visibility: Visibility.PUBLIC,
-      ...(cat ? { categoryId: cat } : {}),
+      ...(typeof cat === 'number' ? { categoryId: cat } : {}),
       ...(excludeIds.length ? { id: { notIn: excludeIds } } : {}),
     });
 
-    // 1) Try unseen in requested category (or All if no cat)
-    let v = await this.randomPick(whereBase(categoryId));
+    let v: any = null;
 
-    // 2) If category was specified but empty, try "All"
-    if (!v && categoryId) v = await this.randomPick(whereBase(undefined));
+    if (typeof categoryId === 'number') {
+      // STRICT: only this category
+      v = await this.randomPick(whereBase(categoryId));
 
-    // 3) Recycle least-recently-seen
-    if (!v && me) {
-      const seenOldest = await this.prisma.userVideoSeen.findFirst({
-        where: { userId: me.id },
-        orderBy: { seenAt: 'asc' }, // NOTE: your model uses seenAt
-        select: {
-          video: {
-            select: {
-              id: true,
-              title: true,
-              description: true,
-              durationSec: true,
-              s3Bucket: true,
-              s3Key: true,
-              createdAt: true,
-              category: { select: { id: true, name: true } },
-              author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-            },
+      // recycle within the same category
+      if (!v && me) {
+        const seenOldestInCat = await this.prisma.userVideoSeen.findFirst({
+          where: {
+            userId: me.id,
+            video: { visibility: Visibility.PUBLIC, categoryId: categoryId },
           },
-        },
-      });
-      v = seenOldest?.video || null;
+          orderBy: { seenAt: 'asc' },
+          select: { video: { select: this.videoSelect } },
+        });
+        v = seenOldestInCat?.video || null;
+      }
+
+      if (!v) {
+        throw new NotFoundException('No videos available in this category');
+      }
+    } else {
+      // No category filter → original behavior
+      v = await this.randomPick(whereBase(undefined));
+
+      if (!v && me) {
+        const seenOldest = await this.prisma.userVideoSeen.findFirst({
+          where: { userId: me.id },
+          orderBy: { seenAt: 'asc' },
+          select: { video: { select: this.videoSelect } },
+        });
+        v = seenOldest?.video || null;
+      }
+
+      if (!v) v = await this.randomPick({ visibility: Visibility.PUBLIC });
+      if (!v) throw new NotFoundException('No videos available');
     }
-
-    // 4) Last resort: any random PUBLIC video
-    if (!v) v = await this.randomPick({ visibility: Visibility.PUBLIC });
-
-    if (!v) throw new NotFoundException('No videos available');
 
     return {
       id: v.id,
@@ -92,7 +108,6 @@ export class FeedService {
     };
   }
 
-  // Pick ONE random row matching "where"
   private async randomPick(where: Prisma.VideoWhereInput) {
     const total = await this.prisma.video.count({ where });
     if (!total) return null;
@@ -101,17 +116,7 @@ export class FeedService {
       where,
       skip,
       take: 1,
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        durationSec: true,
-        s3Bucket: true,
-        s3Key: true,
-        createdAt: true,
-        category: { select: { id: true, name: true } },
-        author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      },
+      select: this.videoSelect,
     });
     return rows[0] ?? null;
   }

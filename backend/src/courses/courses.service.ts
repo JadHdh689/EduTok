@@ -68,7 +68,14 @@ export class CoursesService {
             },
           },
         },
-        quizzes: { select: { id: true, title: true, courseId: true } },
+        // expose final presence + title, not the answers
+        quizzes: {
+          select: {
+            id: true,
+            title: true,
+            _count: { select: { questions: true } },
+          },
+        },
         _count: { select: { enrollments: true } },
       },
     });
@@ -118,7 +125,7 @@ export class CoursesService {
   async listAuthored(authSub: string, take = 20, skip = 0) {
     return await this.prisma.course.findMany({
       where: { author: { authSub } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
       take,
       skip,
       select: {
@@ -397,7 +404,18 @@ export class CoursesService {
         data: { progressPct: pct, completedAt: pct === 100 ? new Date() : null },
       });
 
-      return { attemptId: attempt.id, score, maxScore: max, completedSection: completed, progressPct: pct };
+      return {
+        attemptId: attempt.id,
+        score,
+        maxScore: max,
+        completedSection: completed,
+        progressPct: pct,
+        answers: answersPayload.map((a) => ({
+          questionId: a.questionId,
+          selectedOptionId: a.selectedOptionId ?? null,
+          correctOptionId: a.correctOptionId ?? null,
+        })),
+      };
     });
   }
 
@@ -410,24 +428,179 @@ export class CoursesService {
       throw new BadRequestException('Only author can modify the course');
     }
   }
+
+  // ===== Final exam (manual) =====
+
+  /**
+   * Upsert a course final exam with a full set of questions/options (manual authoring).
+   * Idempotent: replaces existing final quiz questions with provided ones.
+   */
+  async upsertFinalExam(
+    courseId: string,
+    authorAuthSub: string,
+    payload: {
+      title: string;
+      questions: {
+        text: string;
+        options: { text: string; isCorrect: boolean }[];
+      }[];
+    },
+  ) {
+    await this.ensureCourseOwner(courseId, authorAuthSub);
+
+    return this.prisma.$transaction(async (tx) => {
+      // find or create the quiz shell
+      let quiz = await tx.quiz.findFirst({ where: { courseId } });
+      if (!quiz) {
+        quiz = await tx.quiz.create({
+          data: { courseId, title: payload.title, passScore: null },
+        });
+      } else {
+        // wipe & replace questions
+        await tx.quizQuestion.deleteMany({ where: { quizId: quiz.id } });
+        await tx.quiz.update({ where: { id: quiz.id }, data: { title: payload.title } });
+      }
+
+      // insert new questions
+      let order = 1;
+      for (const q of payload.questions) {
+        const newQ = await tx.quizQuestion.create({
+          data: { quizId: quiz.id, order: order++, text: q.text },
+        });
+        for (const o of q.options) {
+          await tx.quizOption.create({
+            data: { questionId: newQ.id, text: o.text, isCorrect: !!o.isCorrect },
+          });
+        }
+      }
+      return { quizId: quiz.id, questions: payload.questions.length };
+    });
+  }
+
+  /** Public final exam (no correct flags) */
+  async getFinalPublic(courseId: string) {
+    const quiz = await this.prisma.quiz.findFirst({
+      where: { courseId },
+      include: {
+        questions: {
+          orderBy: { order: 'asc' },
+          include: { options: { select: { id: true, text: true } } }, // hide isCorrect
+        },
+      },
+    });
+    if (!quiz) return { quiz: null };
+    return {
+      quiz: {
+        id: quiz.id,
+        title: quiz.title,
+        questions: quiz.questions.map((q) => ({
+          id: q.id,
+          text: q.text,
+          options: q.options,
+        })),
+      },
+    };
+  }
+
+  /** Submit a course final exam; marks course completed on pass (score===max) */
+  async submitFinalQuiz(
+    authSub: string,
+    courseId: string,
+    answers: { questionId: string; selectedOptionId: string }[],
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { authSub } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const quiz = await this.prisma.quiz.findFirst({
+      where: { courseId },
+      include: { questions: { include: { options: true } } },
+    });
+    if (!quiz) throw new BadRequestException('Final exam not found');
+
+    // grade
+    const { score, max, answersPayload } = grade(
+      quiz.questions.map((q) => ({
+        id: q.id,
+        options: q.options.map((o) => ({ id: o.id, correct: o.isCorrect })),
+      })),
+      answers,
+    );
+
+    return this.prisma.$transaction(async (tx) => {
+      // ensure enrollment exists
+      await tx.courseEnrollment.upsert({
+        where: { userId_courseId: { userId: user.id, courseId } },
+        update: {},
+        create: { userId: user.id, courseId, status: EnrollmentStatus.IN_PROGRESS, startedAt: new Date() },
+      });
+
+      const attempt = await tx.quizAttempt.create({
+        data: {
+          quizId: quiz.id,
+          userId: user.id,
+          startedAt: new Date(),
+          completedAt: new Date(),
+          score,
+          maxScore: max,
+          passed: score === max,
+        },
+      });
+
+      for (const a of answersPayload) {
+        await tx.quizAnswer.create({
+          data: {
+            attemptId: attempt.id,
+            questionId: a.questionId,
+            selectedOptionId: a.selectedOptionId,
+            isCorrect: a.isCorrect,
+          },
+        });
+      }
+
+      // progress recompute still driven by sections; final marks completion if passed
+      if (score === max) {
+        await tx.courseEnrollment.updateMany({
+          where: { userId: user.id, courseId },
+          data: { status: EnrollmentStatus.COMPLETED, progressPct: 100, completedAt: new Date() },
+        });
+      }
+
+      return {
+        attemptId: attempt.id,
+        score,
+        maxScore: max,
+        passed: score === max,
+        answers: answersPayload.map((a) => ({
+          questionId: a.questionId,
+          selectedOptionId: a.selectedOptionId ?? null,
+          correctOptionId: a.correctOptionId ?? null,
+        })),
+      };
+    });
+  }
 }
 
-// local helper
+// ───────────────────────── local helper ─────────────────────────
+// returns correctOptionId for review in addition to isCorrect
 function grade(
   questions: { id: string; options: { id: string; correct: boolean }[] }[],
   answers: { questionId: string; selectedOptionId: string }[],
 ) {
-  const key = new Map<string, string>();
+  const key = new Map<string, string>(); // questionId -> correctOptionId
   for (const q of questions) {
     const correct = q.options.find((o) => o.correct);
     if (correct) key.set(q.id, correct.id);
   }
+
   let score = 0;
   const max = questions.length;
+
   const answersPayload = answers.map((a) => {
-    const isCorrect = key.get(a.questionId) === a.selectedOptionId;
+    const correctOptionId = key.get(a.questionId) || null;
+    const isCorrect = correctOptionId === a.selectedOptionId;
     if (isCorrect) score++;
-    return { ...a, isCorrect };
+    return { ...a, isCorrect, correctOptionId };
   });
+
   return { score, max, answersPayload };
 }

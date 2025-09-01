@@ -209,127 +209,132 @@ export class VideosService {
 
   /**
    * Return a video's quiz with options but without isCorrect flags.
-   * Backward compatible:
-   * - `section`: first section (if any) using this video (so old frontends still branch)
-   * - `sectionsCount`: total # of sections referencing this video
+   * Also returns the first section/course this video belongs to (if any),
+   * for backward compatibility with older frontends.
    */
-/** Return a video's quiz with options but without isCorrect flags */
-/** Return a video's quiz with options but without isCorrect flags */
-/** Return a video's quiz with options but without isCorrect flags */
-/** Return a video's quiz with options but without isCorrect flags */
-async getVideoQuizPublic(videoId: string) {
-  const v = await this.prisma.video.findUnique({
-    where: { id: videoId },
-    include: {
+  async getVideoQuizPublic(videoId: string) {
+    const v = await this.prisma.video.findUnique({
+      where: { id: videoId },
+      include: {
+        quiz: {
+          include: {
+            questions: {
+              orderBy: { order: 'asc' },
+              include: { options: { select: { id: true, text: true } } }, // hide isCorrect
+            },
+          },
+        },
+        sections: {
+          include: {
+            chapter: {
+              include: { course: { select: { id: true, title: true } } },
+            },
+          },
+        },
+      },
+    });
+    if (!v) throw new NotFoundException('Video not found');
+
+    const firstSection = v.sections?.[0];
+    const section = firstSection
+      ? {
+          id: firstSection.id,
+          chapterId: firstSection.chapterId,
+          courseId: firstSection.chapter.course.id,
+          courseTitle: firstSection.chapter.course.title,
+        }
+      : null;
+
+    if (!v.quiz) return { quiz: null, section };
+
+    return {
       quiz: {
-        include: {
-          questions: {
-            orderBy: { order: 'asc' },
-            include: { options: { select: { id: true, text: true } } }, // hide isCorrect
-          },
-        },
+        id: v.quiz.id,
+        title: v.quiz.title,
+        questions: v.quiz.questions.map((q) => ({
+          id: q.id,
+          text: q.text,
+          options: q.options, // no isCorrect in payload
+        })),
       },
-      sections: {
-        include: {
-          chapter: {
-            include: { course: { select: { id: true, title: true } } },
-          },
-        },
-      },
-    },
-  });
-  if (!v) throw new NotFoundException('Video not found');
+      section,
+    };
+  }
 
-  const firstSection = v.sections?.[0];
-  const section = firstSection
-    ? {
-        id: firstSection.id,
-        chapterId: firstSection.chapterId,
-        courseId: firstSection.chapter.course.id,
-        courseTitle: firstSection.chapter.course.title,
+  /**
+   * Grade a video-only quiz and store attempt (does NOT touch SectionProgress).
+   * If the video is part of a course section, force using the course endpoint.
+   */
+  async submitVideoQuizAttempt(
+    authSub: string,
+    videoId: string,
+    answers: { questionId: string; selectedOptionId: string }[],
+  ) {
+    const me = await this.prisma.user.findUnique({ where: { authSub } });
+    if (!me) throw new NotFoundException('User not found');
+
+    const v = await this.prisma.video.findUnique({
+      where: { id: videoId },
+      include: { quiz: { include: { questions: { include: { options: true } } } }, sections: true },
+    });
+    if (!v) throw new NotFoundException('Video not found');
+    if (!v.quiz) throw new BadRequestException('Video has no quiz');
+
+    // if video is part of any section(s), force course flow
+    if (v.sections?.length) {
+      throw new BadRequestException('This video belongs to a course section. Use /courses/submit-section-quiz.');
+    }
+
+    // build answer key
+    const key = new Map<string, string>(); // questionId -> correctOptionId
+    for (const q of v.quiz.questions) {
+      const c = q.options.find((o) => o.isCorrect);
+      if (c) key.set(q.id, c.id);
+    }
+
+    let score = 0;
+    const detailed = answers.map((a) => {
+      const correctOptionId = key.get(a.questionId) || null;
+      const isCorrect = correctOptionId === a.selectedOptionId;
+      if (isCorrect) score++;
+      return { ...a, isCorrect, correctOptionId };
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      const attempt = await tx.quizAttempt.create({
+        data: {
+          quizId: v.quiz!.id,
+          userId: me.id,
+          startedAt: new Date(),
+          completedAt: new Date(),
+          score,
+          maxScore: v.quiz!.questions.length,
+          passed: score === v.quiz!.questions.length,
+        },
+      });
+
+      for (const a of detailed) {
+        await tx.quizAnswer.create({
+          data: {
+            attemptId: attempt.id,
+            questionId: a.questionId,
+            selectedOptionId: a.selectedOptionId,
+            isCorrect: !!a.isCorrect,
+          },
+        });
       }
-    : null;
 
-  if (!v.quiz) return { quiz: null, section };
-
-  return {
-    quiz: {
-      id: v.quiz.id,
-      title: v.quiz.title,
-      questions: v.quiz.questions.map(q => ({
-        id: q.id,
-        text: q.text,
-        options: q.options, // no isCorrect
-      })),
-    },
-    section,
-  };
-}
-
-
-
-
-  /** Grade a video-only quiz and store attempt (does NOT touch SectionProgress). */
-/** Grade a video-only quiz and store attempt (does NOT touch SectionProgress) */
-async submitVideoQuizAttempt(
-  authSub: string,
-  videoId: string,
-  answers: { questionId: string; selectedOptionId: string }[],
-) {
-  const me = await this.prisma.user.findUnique({ where: { authSub } });
-  if (!me) throw new NotFoundException('User not found');
-
-  const v = await this.prisma.video.findUnique({
-    where: { id: videoId },
-    include: { quiz: { include: { questions: { include: { options: true } } } }, sections: true },
-  });
-  if (!v) throw new NotFoundException('Video not found');
-  if (!v.quiz) throw new BadRequestException('Video has no quiz');
-
-  // CHANGED: if video is part of any section(s), force course flow
-  if (v.sections?.length) {
-    throw new BadRequestException(
-      'This video belongs to a course section. Use /courses/submit-section-quiz.'
-    );
-  }
-
-  const key = new Map<string, string>();
-  for (const q of v.quiz.questions) {
-    const c = q.options.find((o) => o.isCorrect);
-    if (c) key.set(q.id, c.id);
-  }
-  let score = 0;
-  for (const a of answers) if (key.get(a.questionId) === a.selectedOptionId) score++;
-
-  return this.prisma.$transaction(async (tx) => {
-    const attempt = await tx.quizAttempt.create({
-      data: {
-        quizId: v.quiz!.id,
-        userId: me.id,
-        startedAt: new Date(),
-        completedAt: new Date(),
+      return {
+        attemptId: attempt.id,
         score,
         maxScore: v.quiz!.questions.length,
         passed: score === v.quiz!.questions.length,
-      },
-    });
-    for (const a of answers) {
-      await tx.quizAnswer.create({
-        data: {
-          attemptId: attempt.id,
+        answers: detailed.map((a) => ({
           questionId: a.questionId,
-          selectedOptionId: a.selectedOptionId,
-          isCorrect: key.get(a.questionId) === a.selectedOptionId,
-        },
-      });
-    }
-    return {
-      attemptId: attempt.id,
-      score,
-      maxScore: v.quiz!.questions.length,
-      passed: score === v.quiz!.questions.length,
-    };
-  });
-}
-
+          selectedOptionId: a.selectedOptionId ?? null,
+          correctOptionId: a.correctOptionId ?? null,
+        })),
+      };
+    });
+  }
 }

@@ -1,3 +1,4 @@
+// src/courses/courses.controller.ts
 import {
   Body,
   Controller,
@@ -101,12 +102,54 @@ export class CoursesController {
     return this.courses.deleteSection(sectionId, req.auth.sub);
   }
 
-  // Optional: generate a final exam from all section quizzes
-  @Post(':courseId/final/generate')
-generateFinal(@Req() req: any, @Param('courseId') courseId: string, @Body() body: { count?: number; shuffle?: boolean }) {
-  return this.courses.generateFinalFromSections(courseId, req.auth.sub, body?.count, body?.shuffle ?? true);
-}
+  // ===== Final exam (two ways) =====
 
+  // A) Generate from section quizzes (existing behavior)
+  @Post(':courseId/final/generate')
+  generateFinal(
+    @Req() req: any,
+    @Param('courseId') courseId: string,
+    @Body() body: { count?: number; shuffle?: boolean },
+  ) {
+    return this.courses.generateFinalFromSections(
+      courseId,
+      req.auth.sub,
+      body?.count,
+      body?.shuffle ?? true,
+    );
+  }
+
+  // B) Manual final — upsert full set (title + questions/options)
+  // Body shape:
+  // { title: string; questions: { text: string; options: { text: string; isCorrect: boolean }[] }[] }
+  @Post(':courseId/final')
+  upsertFinal(
+    @Req() req: any,
+    @Param('courseId') courseId: string,
+    @Body() body: {
+      title: string;
+      questions: { text: string; options: { text: string; isCorrect: boolean }[] }[];
+    },
+  ) {
+    return this.courses.upsertFinalExam(courseId, req.auth.sub, body);
+  }
+
+  // Public fetch (no isCorrect flags)
+  @Get(':courseId/final')
+  getFinal(@Param('courseId') courseId: string) {
+    return this.courses.getFinalPublic(courseId);
+  }
+
+  // Learner submits final answers
+  // Body shape: { answers: { questionId: string; selectedOptionId: string }[] }
+  @Post(':courseId/final/submit')
+  submitFinal(
+    @Req() req: any,
+    @Param('courseId') courseId: string,
+    @Body() body: { answers: { questionId: string; selectedOptionId: string }[] },
+  ) {
+    return this.courses.submitFinalQuiz(req.auth.sub, courseId, body?.answers ?? []);
+  }
 
   // ===== Learning flow =====
   @Post('enroll')
