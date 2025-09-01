@@ -1,3 +1,6 @@
+// ────────────────────────────────────────────────────────────────────────────
+// FILE: src/components/courses/SectionPlayer.tsx
+// ────────────────────────────────────────────────────────────────────────────
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Box, CircularProgress, IconButton, Stack, Tooltip, Typography, Badge, Button, Chip,
@@ -18,16 +21,16 @@ import { CoursesAPI, VideosAPI } from '../../services/api';
 import CommentsDrawer from '../feed/CommentsDrawer';
 
 /* ────────────────────────────────────────────────────────────────────────────
-   CourseQuizModal (unchanged logic; minor layout polish)
+   CourseQuizModal — shows results, persists progress, NO auto next/redirect
    ──────────────────────────────────────────────────────────────────────────── */
 function CourseQuizModal({
-  open, onClose, sectionId, videoId, onPassed,
+  open, onClose, sectionId, videoId, onNext,
 }: {
   open: boolean;
   onClose: () => void;
   sectionId: string;
   videoId: string;
-  onPassed?: (progressPct: number) => void;
+  onNext?: () => void; // manual "Next section" after results (optional)
 }) {
   const [loading, setLoading] = useState(false);
   const [quiz, setQuiz] = useState<{ id: string; questions: { id: string; text: string; options: { id: string; text: string }[] }[] } | null>(null);
@@ -61,11 +64,14 @@ function CourseQuizModal({
     if (!quiz) return;
     const payload = quiz.questions.map(q => ({ questionId: q.id, selectedOptionId: answers[q.id] }));
     try {
+      setErr(undefined);
+      setLoading(true);
       const r = await CoursesAPI.submitSectionQuiz(sectionId, payload);
       setResult({ score: r.score, maxScore: r.maxScore, progressPct: r.progressPct, answers: r.answers });
-      onPassed?.(r.progressPct);
     } catch (e: any) {
       setErr(e?.response?.data?.message || e.message || 'Submit failed');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -78,6 +84,11 @@ function CourseQuizModal({
     );
     return map;
   }, [result]);
+
+  const handleNext = () => {
+    onClose();
+    onNext?.();
+  };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -158,8 +169,13 @@ function CourseQuizModal({
       </DialogContent>
       <DialogActions>
         {!result && <Button onClick={onClose}>Close</Button>}
-        {!result && quiz && <Button variant="contained" onClick={submit} disabled={!canSubmit}>Submit</Button>}
-        {result && <Button variant="contained" onClick={onClose}>Done</Button>}
+        {!result && quiz && <Button variant="contained" onClick={submit} disabled={!canSubmit || loading}>Submit</Button>}
+        {result && (
+          <>
+            <Button onClick={onClose}>Done</Button>
+            {onNext && <Button variant="contained" onClick={handleNext}>Next section</Button>}
+          </>
+        )}
       </DialogActions>
     </Dialog>
   );
@@ -167,9 +183,6 @@ function CourseQuizModal({
 
 /* ────────────────────────────────────────────────────────────────────────────
    SectionPlayer (responsive)
-   - Uses 100dvh, safe-area insets
-   - Responsive video sizing & controls
-   - Smaller bars on mobile
    ──────────────────────────────────────────────────────────────────────────── */
 type SectionPlayerProps = {
   courseTitle: string;
@@ -214,12 +227,26 @@ export default function SectionPlayer({
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  // ✅ Guard: only trigger quiz once per section/video end
+  const endedOnceRef = useRef(false);
+
+  const openQuiz = () => {
+    setPaused(true);          // pause background video
+    setQuizOpen(true);
+  };
+
+  const closeQuiz = () => {
+    setQuizOpen(false);
+    endedOnceRef.current = true; // prevent re-open from onEnded after closing
+  };
+
   useEffect(() => {
     (async () => {
       setLoading(true);
       setErr(undefined);
       setPlayUrl(null);
       setProgress(0);
+      endedOnceRef.current = false;   // reset guard when video changes
       try {
         const [{ url }, full] = await Promise.all([
           VideosAPI.streamUrl(section.video.id),
@@ -295,10 +322,10 @@ export default function SectionPlayer({
       sx={{
         position: 'relative',
         width: '100%',
-        height: '100dvh',                 // mobile-safe full height
+        height: '100dvh',
         bgcolor: 'black',
         overflow: 'hidden',
-        pt: `max(${UI.TOP}px, env(safe-area-inset-top, 0px))`,   // ensure top bar doesn’t overlap notch
+        pt: `max(${UI.TOP}px, env(safe-area-inset-top, 0px))`,
         pb: `max(${UI.BOTTOM}px, env(safe-area-inset-bottom, 0px))`,
       }}
     >
@@ -363,7 +390,13 @@ export default function SectionPlayer({
               muted={muted}
               playsInline
               preload="auto"
-              onEnded={() => setQuizOpen(true)}
+              onEnded={() => {
+                // ✅ only open once automatically
+                if (!endedOnceRef.current) {
+                  endedOnceRef.current = true;
+                  openQuiz();
+                }
+              }}
               style={{
                 width: 'auto',
                 height: 'auto',
@@ -431,7 +464,7 @@ export default function SectionPlayer({
 
         <Tooltip title="Take quiz">
           <IconButton
-            onClick={() => setQuizOpen(true)}
+            onClick={openQuiz}
             sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.12)' }}
             size={downSm ? 'small' : 'medium'}
           >
@@ -483,7 +516,7 @@ export default function SectionPlayer({
             onChange={(e) => onSeek(Number(e.target.value))}
             style={{ width: '100%' }}
           />
-          <Typography sx={{ color: '#ccc', minWidth: 42, textAlign: 'right' }} variant="caption">
+        <Typography sx={{ color: '#ccc', minWidth: 42, textAlign: 'right' }} variant="caption">
             {Math.floor(duration || 0)}s
           </Typography>
         </Box>
@@ -500,7 +533,7 @@ export default function SectionPlayer({
           <Button
             variant="contained"
             startIcon={<QuizOutlinedIcon />}
-            onClick={() => setQuizOpen(true)}
+            onClick={openQuiz}
             size={downSm ? 'small' : 'medium'}
           >
             Take quiz to continue
@@ -510,7 +543,7 @@ export default function SectionPlayer({
               variant="text"
               onClick={onNext}
               size={downSm ? 'small' : 'medium'}
-              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}  // hide on phones to save space
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
             >
               Skip to next
             </Button>
@@ -522,13 +555,10 @@ export default function SectionPlayer({
       <CommentsDrawer open={commentsOpen} onClose={() => setCommentsOpen(false)} videoId={section.video.id} />
       <CourseQuizModal
         open={quizOpen}
-        onClose={() => setQuizOpen(false)}
+        onClose={closeQuiz}     // ✅ mark endedOnce so it won't reopen
         sectionId={section.id}
         videoId={section.video.id}
-        onPassed={() => {
-          setQuizOpen(false);
-          onNext?.();
-        }}
+        onNext={onNext}
       />
     </Box>
   );

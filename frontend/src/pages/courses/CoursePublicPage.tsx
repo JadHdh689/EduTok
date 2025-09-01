@@ -175,7 +175,7 @@ export default function CoursePublicPage() {
   return (
     <Box sx={{ px: 2, py: 3 }}>
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-        <IconButton onClick={() => navigate(-1)}>
+        <IconButton onClick={() => navigate('/courses')}>
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h6">Course</Typography>

@@ -1,7 +1,20 @@
-// src/component/courses/SectionQuizModal.tsx
-import { useEffect, useRef, useState } from 'react';
+// ───────────────────────────────────────────────────────────────
+// FILE: src/components/courses/SectionQuizModal.tsx
+// ───────────────────────────────────────────────────────────────
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
-  Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography, RadioGroup, FormControlLabel, Radio
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  Typography,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  Alert,
 } from '@mui/material';
 import { CoursesAPI, VideosAPI } from '../../services/api';
 
@@ -12,22 +25,36 @@ type Props = {
   section: any | null; // { id, title, video: { id } }
 };
 
-/**
- * Minimal flow:
- * 1) Plays the section video (muted=false like FYP tweak)
- * 2) Loads quiz from video (via /videos/:id/quiz) just to get questions/options
- * 3) Submits through /courses/submit-section-quiz to affect progress
- */
 export default function SectionQuizModal({ open, onClose, videoUrl, section }: Props) {
   const vref = useRef<HTMLVideoElement | null>(null);
   const [paused, setPaused] = useState(false);
-  const [quiz, setQuiz] = useState<{ id: string; questions: { id: string; text: string; options: { id: string; text: string }[] }[] } | null>(null);
+  const [quiz, setQuiz] = useState<{
+    id: string;
+    questions: { id: string; text: string; options: { id: string; text: string }[] }[];
+  } | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ score: number; maxScore: number; progressPct: number } | null>(null);
+  const [err, setErr] = useState<string>();
+  const [result, setResult] = useState<{
+    attemptId: string;
+    score: number;
+    maxScore: number;
+    progressPct: number;
+    answers: {
+      questionId: string;
+      selectedOptionId: string;
+      correctOptionId: string;
+      isCorrect: boolean;
+    }[];
+  } | null>(null);
 
+  // Load quiz for section video
   useEffect(() => {
     if (!open || !section?.video?.id) return;
+    setQuiz(null);
+    setResult(null);
+    setAnswers({});
+    setErr(undefined);
     (async () => {
       try {
         const data = await VideosAPI.getQuiz(section.video.id);
@@ -36,12 +63,14 @@ export default function SectionQuizModal({ open, onClose, videoUrl, section }: P
         } else {
           setQuiz(null);
         }
-      } catch {
+      } catch (e: any) {
+        setErr(e?.response?.data?.message || e.message || 'Failed to load quiz');
         setQuiz(null);
       }
     })();
   }, [open, section?.video?.id]);
 
+  // Play/pause handler
   useEffect(() => {
     const v = vref.current;
     if (!v) return;
@@ -49,6 +78,7 @@ export default function SectionQuizModal({ open, onClose, videoUrl, section }: P
     else v.play().catch(() => {});
   }, [paused, videoUrl]);
 
+  // Submit quiz → persist results
   async function submit() {
     if (!section?.id || !quiz) return;
     const payload = quiz.questions.map((q) => ({
@@ -58,9 +88,15 @@ export default function SectionQuizModal({ open, onClose, videoUrl, section }: P
     setSubmitting(true);
     try {
       const r = await CoursesAPI.submitSectionQuiz(section.id, payload);
-      setResult({ score: r.score, maxScore: r.maxScore, progressPct: r.progressPct });
+      setResult({
+        attemptId: r.attemptId,
+        score: r.score,
+        maxScore: r.maxScore,
+        progressPct: r.progressPct,
+        answers: r.answers,
+      });
     } catch (e: any) {
-      alert(e?.response?.data?.message || e.message || 'Submit failed');
+      setErr(e?.response?.data?.message || e.message || 'Submit failed');
     } finally {
       setSubmitting(false);
     }
@@ -68,9 +104,25 @@ export default function SectionQuizModal({ open, onClose, videoUrl, section }: P
 
   const canSubmit = quiz && quiz.questions.every((q) => !!answers[q.id]);
 
+  // map answers for review
+  const answerDetail = useMemo(() => {
+    const map = new Map<
+      string,
+      { selected?: string; correct?: string; isCorrect?: boolean }
+    >();
+    (result?.answers || []).forEach((a) =>
+      map.set(a.questionId, {
+        selected: a.selectedOptionId,
+        correct: a.correctOptionId,
+        isCorrect: a.isCorrect,
+      })
+    );
+    return map;
+  }, [result]);
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>{section?.title ?? 'Section'}</DialogTitle>
+      <DialogTitle>{section?.title ?? 'Section Quiz'}</DialogTitle>
       <DialogContent dividers>
         {videoUrl && (
           <Box sx={{ bgcolor: 'black', borderRadius: 1, overflow: 'hidden', mb: 2 }}>
@@ -87,7 +139,7 @@ export default function SectionQuizModal({ open, onClose, videoUrl, section }: P
                 ref={vref}
                 src={videoUrl}
                 autoPlay
-                muted={false}      // default unmuted like your FYP tweak
+                muted={false} // default unmuted
                 playsInline
                 preload="auto"
                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
@@ -96,43 +148,120 @@ export default function SectionQuizModal({ open, onClose, videoUrl, section }: P
           </Box>
         )}
 
-        {result ? (
-          <Stack spacing={1}>
-            <Typography variant="subtitle1">Great job!</Typography>
-            <Typography variant="body2">
-              Score: {result.score}/{result.maxScore} · Course progress: {result.progressPct}%
+        {err && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {err}
+          </Alert>
+        )}
+
+        {/* RESULTS VIEW */}
+        {result && quiz ? (
+          <Stack spacing={2}>
+            <Alert severity={result.score >= result.maxScore / 2 ? 'success' : 'warning'}>
+              Score: {result.score}/{result.maxScore} • Course progress: {result.progressPct}%
+            </Alert>
+
+            <Typography variant="subtitle1">Review</Typography>
+            {quiz.questions.map((q, i) => {
+              const det = answerDetail.get(q.id);
+              return (
+                <Box
+                  key={q.id}
+                  sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+                >
+                  <Typography sx={{ mb: 1 }}>
+                    <b>Q{i + 1}.</b> {q.text}
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    {q.options.map((o) => {
+                      const isSelected = det?.selected === o.id;
+                      const isCorrect = det?.correct === o.id;
+                      const bg = isCorrect
+                        ? 'success.light'
+                        : isSelected
+                        ? 'error.light'
+                        : undefined;
+                      const borderColor = isCorrect
+                        ? 'success.main'
+                        : isSelected
+                        ? 'error.main'
+                        : 'divider';
+                      return (
+                        <Box
+                          key={o.id}
+                          sx={{
+                            p: 1,
+                            border: '1px solid',
+                            borderColor,
+                            bgcolor: bg,
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Typography variant="body2">
+                            {o.text} {isCorrect ? '✓' : isSelected ? '✗' : ''}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              );
+            })}
+            <Typography variant="caption" color="text.secondary">
+              Legend: ✓ correct • ✗ your choice (if incorrect)
             </Typography>
           </Stack>
         ) : quiz ? (
+          // QUIZ FORM VIEW
           <Stack spacing={2}>
             <Typography variant="subtitle1">Quiz</Typography>
             {quiz.questions.map((q, i) => (
-              <Box key={q.id} sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                <Typography variant="body2" sx={{ mb: 1 }}>{i + 1}. {q.text}</Typography>
+              <Box
+                key={q.id}
+                sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+              >
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  {i + 1}. {q.text}
+                </Typography>
                 <RadioGroup
                   value={answers[q.id] ?? ''}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                  onChange={(e) =>
+                    setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                  }
                 >
                   {q.options.map((o) => (
-                    <FormControlLabel key={o.id} value={o.id} control={<Radio />} label={o.text} />
+                    <FormControlLabel
+                      key={o.id}
+                      value={o.id}
+                      control={<Radio />}
+                      label={o.text}
+                    />
                   ))}
                 </RadioGroup>
               </Box>
             ))}
           </Stack>
         ) : (
-          <Typography variant="body2" color="text.secondary">
-            This section’s video has no quiz attached.
-          </Typography>
+          !err && (
+            <Typography variant="body2" color="text.secondary">
+              This section’s video has no quiz attached.
+            </Typography>
+          )
         )}
       </DialogContent>
+
       <DialogActions>
-        <Button onClick={onClose}>Close</Button>
+        {!result && <Button onClick={onClose}>Close</Button>}
         {!result && quiz && (
-          <Button variant="contained" onClick={submit} disabled={!canSubmit || submitting}>
+          <Button
+            variant="contained"
+            onClick={submit}
+            disabled={!canSubmit || submitting}
+          >
             Submit
           </Button>
         )}
+        {result && <Button variant="contained" onClick={onClose}>Done</Button>}
       </DialogActions>
     </Dialog>
   );
