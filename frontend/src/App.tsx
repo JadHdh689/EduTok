@@ -32,6 +32,11 @@ import SectionPage from './pages/courses/SectionPage';
 // NEW: final exam page (opens learner modal)
 import CourseFinalPage from './pages/courses/CourseFinal';
 
+
+import PublicProfilePage from './pages/profile/PublicProfilePage';
+import PeopleSearch from './pages/profile/PeopleSearch';
+
+
 // simple placeholder
 function FollowingPage() {
   return <div style={{ padding: 16 }}>Following (coming next)</div>;
@@ -82,6 +87,9 @@ export default function App() {
             <Route path="/profile/courses" element={<MyCoursesList />} />
             <Route path="/profile/courses/new" element={<CourseBuilder />} />
             <Route path="/profile/courses/:id/edit" element={<CourseBuilderWithParam />} />
+            <Route path="/u/:username" element={<PublicProfilePage />} />
+<Route path="/people" element={<PeopleSearch />} />
+
           </Route>
 
           {/* fallback */}

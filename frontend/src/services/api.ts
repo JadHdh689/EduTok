@@ -1,5 +1,6 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 
+/* ================= Tokens ================= */
 export type Tokens = {
   accessToken: string;
   idToken?: string;
@@ -7,8 +8,6 @@ export type Tokens = {
   expiresIn?: number;
   tokenType?: string;
 };
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
 const storageKey = 'authTokens';
 export const tokenStore = {
@@ -22,16 +21,40 @@ export const tokenStore = {
   },
 };
 
-export const api = axios.create({ baseURL: API_BASE });
+/* ================= Axios base =================
+ * Default to /api so dev proxy / prod reverse proxy can route cleanly.
+ * You can override with VITE_API_BASE_URL if you deploy API on another origin.
+ */
+const API_BASE: string =
+  (import.meta as any).env?.VITE_API_BASE_URL ?? '/api';
 
-export const UploadsAPI = {
-  async signGetByKey(key: string, expiresSec?: number) {
-    const { data } = await api.get('/uploads/sign-get', { params: { key, expires: expiresSec } });
-    return data as { url: string; key: string; bucket: string; expiresIn: number };
-  },
-};
+// One axios instance for everything
+export const api = axios.create({
+  baseURL: API_BASE,
+  withCredentials: false,
+});
 
-// Attach auth header
+// Guard against HTML accidentally returned by proxies / SPA
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const r = error?.response;
+    if (r && typeof r.data === 'string') {
+      const body = r.data.trim().slice(0, 200).toLowerCase();
+      const ctype = r.headers?.['content-type'] || '';
+      if (ctype.includes('text/html') || body.startsWith('<!doctype') || body.startsWith('<html')) {
+        return Promise.reject(
+          new Error(
+            `Server returned HTML for ${r.config?.url} (status ${r.status}). Check that the request is hitting the API, not the SPA.`
+          )
+        );
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Attach Authorization on each request
 api.interceptors.request.use((config) => {
   const t = tokenStore.load();
   if (t?.accessToken) {
@@ -41,7 +64,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// 401 refresh-once
+// 401 refresh-once (queue concurrent retries)
 let refreshing = false;
 let queue: Array<() => void> = [];
 api.interceptors.response.use(
@@ -91,7 +114,15 @@ api.interceptors.response.use(
 
 const normEmail = (v: string) => v.trim().toLowerCase();
 
-/* ───────────────── Auth ───────────────── */
+/* ================= Uploads ================= */
+export const UploadsAPI = {
+  async signGetByKey(key: string, expiresSec?: number) {
+    const { data } = await api.get('/uploads/sign-get', { params: { key, expires: expiresSec } });
+    return data as { url: string; key: string; bucket: string; expiresIn: number };
+  },
+};
+
+/* ================= Auth ================= */
 export const AuthAPI = {
   async signIn(username: string, password: string) {
     const { data } = await api.post<Tokens>('/auth/signin', {
@@ -109,10 +140,7 @@ export const AuthAPI = {
     });
   },
   confirm(username: string, code: string) {
-    return api.post('/auth/confirm', {
-      username: normEmail(username),
-      code: code.trim(),
-    });
+    return api.post('/auth/confirm', { username: normEmail(username), code: code.trim() });
   },
   resend(username: string) {
     return api.post('/auth/resend', { username: normEmail(username) });
@@ -127,16 +155,21 @@ export const AuthAPI = {
       newPassword,
     });
   },
-  async signOut() {
+  async signOut(): Promise<void> {
     try {
       await api.post('/auth/signout');
+    } catch {
+      // ignore
     } finally {
       tokenStore.save(null);
     }
   },
+  async signout(): Promise<void> {
+    return this.signOut();
+  },
 };
 
-/* ─────────────── Common ─────────────── */
+/* ================= Common ================= */
 export const CommonAPI = {
   async listCategories() {
     const { data } = await api.get('/categories');
@@ -144,36 +177,35 @@ export const CommonAPI = {
   },
 };
 
-/* ─────────────── Videos ─────────────── */
+/* ================= Videos ================= */
 export type PresignPost = {
   method?: 'POST';
   url: string;
   fields: Record<string, string>;
   key?: string;
 };
-
 export type PresignPut = {
   method: 'PUT';
   url: string;
   key: string;
   headers?: Record<string, string>;
 };
-
 export type VideoQuizPublic = {
   quiz: null | {
     id: string;
     title: string;
     questions: { id: string; text: string; options: { id: string; text: string }[] }[];
   };
-  section: null | { id: string; chapterId: string };
+  section: null | { id: string; chapterId: string; courseId: string; courseTitle: string };
   sectionsCount?: number;
 };
-
 export type QuizAttemptResult = {
   attemptId: string;
   score: number;
   maxScore: number;
   passed: boolean;
+  // added for review
+  answers?: Array<{ questionId: string; selectedOptionId: string; correctOptionId: string; isCorrect: boolean }>;
 };
 
 export const VideosAPI = {
@@ -249,7 +281,7 @@ export const VideosAPI = {
   },
 };
 
-/* ─────────────── Courses ─────────────── */
+/* ================= Courses ================= */
 export const CoursesAPI = {
   // browse
   async browse(params: { q?: string; categoryId?: number; take?: number; skip?: number } = {}) {
@@ -309,7 +341,7 @@ export const CoursesAPI = {
     };
   },
 
-  // submit section quiz
+  // submit section quiz (returns review)
   async submitSectionQuiz(sectionId: string, answers: { questionId: string; selectedOptionId: string }[]) {
     const { data } = await api.post('/courses/submit-section-quiz', { sectionId, answers });
     return data as {
@@ -318,6 +350,7 @@ export const CoursesAPI = {
       maxScore: number;
       completedSection: boolean;
       progressPct: number;
+      answers: Array<{ questionId: string; selectedOptionId: string; correctOptionId: string; isCorrect: boolean }>;
     };
   },
 
@@ -365,14 +398,14 @@ export const CoursesAPI = {
     return data;
   },
 
-  // manual final exam endpoints
+  // final exam
   async getFinal(courseId: string) {
     const { data } = await api.get(`/courses/${courseId}/final`);
-    return data as {
+    return (data?.quiz ?? null) as null | {
       id: string;
       title: string;
       questions: { id: string; text: string; options: { id: string; text: string }[] }[];
-    } | null;
+    };
   },
   async upsertFinal(courseId: string, payload: {
     title: string;
@@ -383,7 +416,14 @@ export const CoursesAPI = {
   },
   async submitFinal(courseId: string, answers: { questionId: string; selectedOptionId: string }[]) {
     const { data } = await api.post(`/courses/${courseId}/final/submit`, { answers });
-    return data as { attemptId: string; score: number; maxScore: number; passed: boolean; progressPct: number };
+    return data as {
+      attemptId: string;
+      score: number;
+      maxScore: number;
+      passed: boolean;
+      progressPct: number;
+      answers: Array<{ questionId: string; selectedOptionId: string; correctOptionId: string; isCorrect: boolean }>;
+    };
   },
 
   // progress
@@ -404,7 +444,6 @@ export const CoursesAPI = {
     };
   },
 
-  // (optional legacy) random generator — keep if you still want the button elsewhere
   async generateFinal(courseId: string, opts?: { count?: number; shuffle?: boolean }) {
     const { data } = await api.post(`/courses/${courseId}/final/generate`, opts ?? {});
     return data as { finalQuizId: string; questions: number };
@@ -426,7 +465,7 @@ export const CoursesAPI = {
   },
 };
 
-/* ─────────────── Feed ─────────────── */
+/* ================= Feed ================= */
 export type FeedItem = {
   id: string;
   title: string;
@@ -441,15 +480,15 @@ export type FeedItem = {
 
 export const FeedAPI = {
   async next(categoryId?: number, exclude?: string) {
-    const params: any = {};
-    if (categoryId) params.categoryId = categoryId;
-    if (exclude) params.exclude = exclude;
+    const params: Record<string, any> = {};
+    if (typeof categoryId === 'number' && Number.isFinite(categoryId)) params.categoryId = categoryId;
+    if (exclude != null && exclude !== '') params.exclude = exclude;
     const { data } = await api.get('/feed/next', { params });
     return data as FeedItem;
   },
 };
 
-/* ─────────────── S3 helper ─────────────── */
+// S3 helper (POST)
 export async function postToS3(url: string, fields: Record<string, string>, file: File) {
   const form = new FormData();
   Object.entries(fields).forEach(([k, v]) => form.append(k, v));
@@ -462,7 +501,7 @@ export async function postToS3(url: string, fields: Record<string, string>, file
   return { key: (fields as any).key };
 }
 
-/* ─────────────── Profile ─────────────── */
+/* ================= Profile (self) ================= */
 export const ProfileAPI = {
   async me() {
     const { data } = await api.get('/users/me');
@@ -482,5 +521,89 @@ export const ProfileAPI = {
   async update(payload: { displayName?: string; bio?: string; avatarUrl?: string }) {
     const { data } = await api.patch('/users', payload);
     return data;
+  },
+};
+
+/* ================= Public Profiles (people search / follow) ================= */
+export const PublicProfilesAPI = {
+  async search(q: string, take?: number, skip?: number) {
+    const { data } = await api.get('/profiles/search', { params: { q, take, skip } });
+    return data as Array<{
+      id: string;
+      username: string;
+      displayName: string;
+      avatarUrl?: string | null;
+      bio?: string | null;
+      createdAt: string;
+      _count: { followsIn: number; followsOut: number };
+    }>;
+  },
+
+  async get(username: string, take?: number, skip?: number) {
+    const { data } = await api.get(`/profiles/${encodeURIComponent(username)}`, { params: { take, skip } });
+    return data as {
+      user: {
+        id: string;
+        username: string;
+        displayName: string;
+        avatarUrl?: string | null;
+        bio?: string | null;
+        createdAt: string;
+      } | null;
+      videos: Array<{
+        id: string;
+        title: string;
+        description?: string | null;
+        durationSec: number;
+        createdAt: string;
+        category: { id: number; name: string };
+        _count: { likes: number; comments: number };
+      }>;
+      courses: Array<{
+        id: string;
+        title: string;
+        description?: string | null;
+        coverImageUrl?: string | null;
+        createdAt: string;
+        _count: { enrollments: number };
+      }>;
+      stats: { followers: number; following: number; videos: number; courses: number };
+      isMe: boolean;
+      isFollowing: boolean;
+    };
+  },
+
+  async follow(username: string) {
+    const { data } = await api.post(`/profiles/${encodeURIComponent(username)}/follow`);
+    return data as { ok: true; isFollowing: true; followers: number };
+  },
+
+  async unfollow(username: string) {
+    const { data } = await api.delete(`/profiles/${encodeURIComponent(username)}/follow`);
+    return data as { ok: true; isFollowing: false; followers: number };
+  },
+
+  async followers(username: string, take?: number, skip?: number) {
+    const { data } = await api.get(`/profiles/${encodeURIComponent(username)}/followers`, {
+      params: { take, skip },
+    });
+    return data as Array<{
+      id: string;
+      username: string;
+      displayName: string;
+      avatarUrl?: string | null;
+    }>;
+  },
+
+  async following(username: string, take?: number, skip?: number) {
+    const { data } = await api.get(`/profiles/${encodeURIComponent(username)}/following`, {
+      params: { take, skip },
+    });
+    return data as Array<{
+      id: string;
+      username: string;
+      displayName: string;
+      avatarUrl?: string | null;
+    }>;
   },
 };

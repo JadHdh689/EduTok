@@ -1,7 +1,7 @@
-// src/components/courses/SectionPlayer.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Box, CircularProgress, IconButton, Stack, Tooltip, Typography, Badge, Button,
+  Alert, Box, CircularProgress, IconButton, Stack, Tooltip, Typography, Badge, Button, Chip,
+  Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, FormControlLabel, Radio,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
@@ -16,13 +16,6 @@ import SkipNextIcon from '@mui/icons-material/SkipNext';
 import { CoursesAPI, VideosAPI } from '../../services/api';
 import CommentsDrawer from '../feed/CommentsDrawer';
 
-import {
-  Dialog, DialogTitle, DialogContent, DialogActions, RadioGroup, FormControlLabel, Radio,
-} from '@mui/material';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Minimal course-aware Quiz modal (unchanged logic)
-// ─────────────────────────────────────────────────────────────────────────────
 function CourseQuizModal({
   open, onClose, sectionId, videoId, onPassed,
 }: {
@@ -36,7 +29,10 @@ function CourseQuizModal({
   const [quiz, setQuiz] = useState<{ id: string; questions: { id: string; text: string; options: { id: string; text: string }[] }[] } | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string>();
-  const [result, setResult] = useState<{ score: number; maxScore: number; progressPct: number } | null>(null);
+  const [result, setResult] = useState<{
+    score: number; maxScore: number; progressPct: number;
+    answers?: Array<{ questionId: string; selectedOptionId: string; correctOptionId: string; isCorrect: boolean }>;
+  } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -59,20 +55,25 @@ function CourseQuizModal({
 
   async function submit() {
     if (!quiz) return;
-    const payload = quiz.questions.map(q => ({
-      questionId: q.id,
-      selectedOptionId: answers[q.id],
-    }));
+    const payload = quiz.questions.map(q => ({ questionId: q.id, selectedOptionId: answers[q.id] }));
     try {
       const r = await CoursesAPI.submitSectionQuiz(sectionId, payload);
-      setResult({ score: r.score, maxScore: r.maxScore, progressPct: r.progressPct });
+      setResult({ score: r.score, maxScore: r.maxScore, progressPct: r.progressPct, answers: r.answers });
       onPassed?.(r.progressPct);
     } catch (e: any) {
       setErr(e?.response?.data?.message || e.message || 'Submit failed');
     }
   }
 
-  const canSubmit = quiz && quiz.questions.every(q => !!answers[q.id]);
+  const canSubmit = quiz?.questions?.every(q => !!answers[q.id]);
+
+  const answerDetail = useMemo(() => {
+    const map = new Map<string, { selected?: string; correct?: string }>();
+    (result?.answers || []).forEach((a) =>
+      map.set(a.questionId, { selected: a.selectedOptionId, correct: a.correctOptionId })
+    );
+    return map;
+  }, [result]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -82,10 +83,54 @@ function CourseQuizModal({
         {err && <Alert severity="error" sx={{ mb: 2 }}>{err}</Alert>}
 
         {result ? (
-          <Stack spacing={1}>
+          <Stack spacing={2}>
             <Alert severity="success">
               Score: {result.score}/{result.maxScore} · Progress: {result.progressPct}%
             </Alert>
+            {result.answers && quiz && (
+              <Stack spacing={2}>
+                <Typography variant="subtitle1">Review</Typography>
+                {quiz.questions.map((q, i) => {
+                  const det = answerDetail.get(q.id);
+                  return (
+                    <Box key={q.id} sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                        <Typography><b>Q{i + 1}.</b> {q.text}</Typography>
+                        {det?.correct && det?.selected && (
+                          <Chip
+                            size="small"
+                            color={det.selected === det.correct ? 'success' : 'error'}
+                            label={det.selected === det.correct ? 'Correct' : 'Incorrect'}
+                          />
+                        )}
+                      </Stack>
+                      <Stack spacing={0.5}>
+                        {q.options.map((o) => {
+                          const isSelected = det?.selected === o.id;
+                          const isCorrect = det?.correct === o.id;
+                          return (
+                            <Box
+                              key={o.id}
+                              sx={{
+                                p: 1,
+                                border: '1px solid',
+                                borderColor: isCorrect ? 'success.main' : isSelected ? 'error.main' : 'divider',
+                                bgcolor: isCorrect ? 'success.light' : isSelected ? 'error.light' : undefined,
+                                borderRadius: 1,
+                              }}
+                            >
+                              <Typography variant="body2">
+                                {o.text} {isCorrect ? '✓' : isSelected ? '✗' : ''}
+                              </Typography>
+                            </Box>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )}
           </Stack>
         ) : quiz ? (
           <Stack spacing={2}>
@@ -116,8 +161,6 @@ function CourseQuizModal({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 type SectionPlayerProps = {
   courseTitle: string;
   chapterTitle: string;
@@ -136,7 +179,6 @@ const UI = { TOP: 56, BOTTOM: 110, RIGHT_STACK_GAP: 16 };
 export default function SectionPlayer({
   courseTitle, chapterTitle, section, onBack, onNext,
 }: SectionPlayerProps) {
-  // ── keep original logic unchanged
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [err, setErr] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -224,7 +266,7 @@ export default function SectionPlayer({
 
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100vh', bgcolor: 'black', overflow: 'hidden' }}>
-      {/* Top bar (same height as FYP) */}
+      {/* Top bar */}
       <Box sx={{
         position: 'absolute', top: 0, left: 0, right: 0, height: UI.TOP,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -240,20 +282,13 @@ export default function SectionPlayer({
         <Typography sx={{ color: '#fff' }} noWrap>{section.title}</Typography>
       </Box>
 
-      {/* SAFE AREA — identical centering/sizing as FypViewer */}
+      {/* SAFE AREA */}
       <Box sx={{ position: 'absolute', top: UI.TOP, bottom: UI.BOTTOM, left: 0, right: 0, overflow: 'hidden' }}>
         <Box
           onClick={() => setPaused((p) => !p)}
           sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            maxWidth: '100%',
-            maxHeight: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            maxWidth: '100%', maxHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           {err && <Alert severity="error">{err}</Alert>}
@@ -282,7 +317,7 @@ export default function SectionPlayer({
         </Box>
       </Box>
 
-      {/* Right controls (unchanged) */}
+      {/* Right controls */}
       <Stack spacing={2} sx={{
         position: 'absolute', right: 12, bottom: UI.BOTTOM + UI.RIGHT_STACK_GAP,
         zIndex: 3, alignItems: 'center'
@@ -323,7 +358,7 @@ export default function SectionPlayer({
         )}
       </Stack>
 
-      {/* Bottom bar (same height as FYP) */}
+      {/* Bottom bar */}
       <Box sx={{
         position: 'absolute', left: 0, right: 0, bottom: 0, height: UI.BOTTOM, p: 2, zIndex: 3,
         background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 35%, rgba(0,0,0,.85) 100%)',
@@ -357,7 +392,7 @@ export default function SectionPlayer({
         </Stack>
       </Box>
 
-      {/* Drawers / Course-aware Quiz */}
+      {/* Drawers / Quiz */}
       <CommentsDrawer open={commentsOpen} onClose={() => setCommentsOpen(false)} videoId={section.video.id} />
       <CourseQuizModal
         open={quizOpen}

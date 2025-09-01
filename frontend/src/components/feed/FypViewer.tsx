@@ -1,4 +1,3 @@
-// src/components/feed/FypViewer.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Box, CircularProgress, IconButton, MenuItem, Stack, TextField, Tooltip, Typography, Badge
@@ -11,6 +10,7 @@ import SkipNextIcon from '@mui/icons-material/SkipNext';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
+import { useNavigate } from 'react-router-dom';
 import { CommonAPI, FeedAPI, VideosAPI } from '../../services/api';
 import CommentsDrawer from './CommentsDrawer';
 import QuizModal from './QuizModal';
@@ -34,6 +34,8 @@ const UI = {
 };
 
 export default function FypViewer() {
+  const navigate = useNavigate();
+
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [catId, setCatId] = useState<number | ''>(() => {
     const saved = localStorage.getItem('fyp.cat');
@@ -81,10 +83,10 @@ export default function FypViewer() {
       const serverLikes =
         typeof full?.likesCount === 'number'
           ? full.likesCount
-          : typeof full?._count?.likes === 'number'
-          ? full._count.likes
+          : typeof (full as any)?._count?.likes === 'number'
+          ? (full as any)._count.likes
           : null;
-      const serverLiked = !!full?.likedByMe;
+      const serverLiked = !!(full as any)?.likedByMe;
       setLikesCount(serverLikes);
       setLiked(serverLiked);
       likeCacheRef.current.set(videoId, { liked: serverLiked, count: serverLikes });
@@ -141,7 +143,12 @@ export default function FypViewer() {
     else v.play().catch(() => {});
   }, [paused, playUrl]);
 
-  const duration = useMemo(() => (videoRef.current?.duration || (item?.durationSec ?? 0)), [item, playUrl]);
+  const duration = useMemo(
+    () => (videoRef.current?.duration && isFinite(videoRef.current.duration)
+      ? videoRef.current.duration
+      : (item?.durationSec ?? 0)),
+    [item, playUrl]
+  );
 
   useEffect(() => {
     const v = videoRef.current;
@@ -183,6 +190,11 @@ export default function FypViewer() {
       likeCacheRef.current.set(item.id, { liked: prevLiked, count: reverted });
     }
   }
+
+  const goToAuthorProfile = () => {
+    if (!item?.author?.username) return;
+    navigate(`/u/${item.author.username}`);
+  };
 
   return (
     <Box sx={{ position: 'relative', width: '100%', height: '100vh', bgcolor: 'black', overflow: 'hidden' }}>
@@ -335,7 +347,18 @@ export default function FypViewer() {
         {item && (
           <>
             <Typography sx={{ color: '#fff', fontWeight: 600 }} noWrap>{item.title}</Typography>
-            <Typography sx={{ color: '#ddd' }} noWrap>
+            <Typography
+              sx={{
+                color: '#ddd',
+                cursor: item.author?.username ? 'pointer' : 'default',
+                textDecoration: item.author?.username ? 'underline' : 'none',
+                textUnderlineOffset: '2px',
+                '&:hover': { opacity: item.author?.username ? 0.9 : 1 },
+              }}
+              noWrap
+              onClick={goToAuthorProfile}
+              title={item.author?.username ? `View @${item.author.username}` : undefined}
+            >
               {item.author?.displayName || item.author?.username || 'Unknown'} · {item.category?.name || 'All'}
             </Typography>
 

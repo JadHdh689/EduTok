@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Box, Button, Chip, Divider, Stack, Typography, Avatar, CircularProgress, Alert, IconButton,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  Stack,
+  Typography,
+  Avatar,
+  CircularProgress,
+  Alert,
+  IconButton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LinearProgress from '@mui/material/LinearProgress';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CoursesAPI } from '../../services/api';
 import FinalQuizModal from '../../components/courses/FinalQuizModal';
@@ -18,18 +29,37 @@ export default function CoursePublicPage() {
   const [enrolled, setEnrolled] = useState(false);
   const [finalOpen, setFinalOpen] = useState(false);
 
+  const [progress, setProgress] = useState<{
+    enrollment: null | {
+      id: string;
+      status: 'IN_PROGRESS' | 'COMPLETED';
+      progressPct: number;
+    };
+    sections: Array<{ sectionId: string; completedAt: string | null; score?: number | null; maxScore?: number | null }>;
+    final?: { available: boolean; attempted?: boolean; passed?: boolean };
+  } | null>(null);
+
   useEffect(() => {
     (async () => {
       if (!id) return;
       setLoading(true);
       setErr(undefined);
       try {
-        const [c, progress] = await Promise.all([
+        const [c, prog] = await Promise.all([
           CoursesAPI.getPublic(id),
-          CoursesAPI.getProgress(id).catch(() => null), // not logged in? fine.
+          CoursesAPI.getProgress(id).catch(() => null), // not logged in is fine
         ]);
         setCourse(c);
-        setEnrolled(!!progress?.enrollment);
+        setEnrolled(!!prog?.enrollment);
+        setProgress(
+          prog
+            ? {
+                enrollment: prog.enrollment,
+                sections: prog.sections || [],
+                final: prog.final,
+              }
+            : null
+        );
       } catch (e: any) {
         setErr(e?.response?.data?.message || e.message || 'Failed to load course');
       } finally {
@@ -38,15 +68,39 @@ export default function CoursePublicPage() {
     })();
   }, [id]);
 
+  async function reloadProgress() {
+    if (!id) return;
+    try {
+      const prog = await CoursesAPI.getProgress(id).catch(() => null);
+      setEnrolled(!!prog?.enrollment);
+      setProgress(
+        prog
+          ? {
+              enrollment: prog.enrollment,
+              sections: prog.sections || [],
+              final: prog.final,
+            }
+          : null
+      );
+    } catch {
+      // ignore
+    }
+  }
+
   async function enroll() {
     if (!id) return;
     try {
       await CoursesAPI.enroll(id);
       setEnrolled(true);
+      await reloadProgress();
     } catch (e: any) {
       const msg = e?.response?.data?.message || e.message || 'Enroll failed';
-      if (/already/i.test(msg) || e?.response?.status === 409) setEnrolled(true);
-      else alert(msg);
+      if (/already/i.test(msg) || e?.response?.status === 409) {
+        setEnrolled(true);
+        await reloadProgress();
+      } else {
+        alert(msg);
+      }
     }
   }
 
@@ -55,8 +109,33 @@ export default function CoursePublicPage() {
     [course]
   );
 
+  const completedIds = useMemo(
+    () =>
+      new Set(
+        (progress?.sections || [])
+          .filter((s) => s.completedAt)
+          .map((s) => s.sectionId)
+      ),
+    [progress]
+  );
+
+  const firstIncomplete = useMemo(() => {
+    if (!course?.chapters?.length) return null;
+    const chapters = (course.chapters || []).slice().sort((a: any, b: any) => a.order - b.order);
+    for (const ch of chapters) {
+      const secs = (ch.sections || []).slice().sort((a: any, b: any) => a.order - b.order);
+      for (const s of secs) {
+        if (!completedIds.has(s.id)) return s;
+      }
+    }
+    return chapters[0]?.sections?.[0] ?? null;
+  }, [course, completedIds]);
+
   const finalQuiz = useMemo(
-    () => (course?.quizzes || []).find((q: any) => String(q?.title || '').toLowerCase().includes('final')),
+    () =>
+      (course?.quizzes || []).find((q: any) =>
+        String(q?.title || '').toLowerCase().includes('final')
+      ),
     [course]
   );
 
@@ -66,13 +145,20 @@ export default function CoursePublicPage() {
       state: {
         courseTitle: course?.title,
         chapterTitle:
-          course?.chapters?.find((ch: any) => ch.sections?.some((s: any) => s.id === sec.id))?.title ?? '',
+          course?.chapters?.find((ch: any) => ch.sections?.some((s: any) => s.id === sec.id))
+            ?.title ?? '',
       },
     });
   }
 
   function openFinal() {
     setFinalOpen(true);
+  }
+
+  function openAuthorProfile() {
+    const username = course?.author?.username;
+    if (!username) return;
+    navigate(`/u/${username}`);
   }
 
   if (loading) {
@@ -110,15 +196,35 @@ export default function CoursePublicPage() {
           />
           <Typography variant="h5" sx={{ mb: 1 }}>{course.title}</Typography>
 
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ mb: 1, cursor: course.author?.username ? 'pointer' : 'default' }}
+            onClick={openAuthorProfile}
+            title={course.author?.username ? `View @${course.author.username}` : undefined}
+          >
             <Avatar sx={{ width: 28, height: 28 }}>
               {(course.author.displayName || course.author.username || '?')[0]?.toUpperCase()}
             </Avatar>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ textDecoration: 'underline', textUnderlineOffset: '2px' }}>
               {course.author.displayName || course.author.username}
             </Typography>
             <Chip size="small" label={course.category?.name ?? 'General'} />
           </Stack>
+
+          {!!progress?.enrollment && (
+            <Stack spacing={0.5} sx={{ mb: 2, maxWidth: 420 }}>
+              <Typography variant="caption" color="text.secondary">
+                Progress: {progress.enrollment.progressPct}%
+                {progress.enrollment.status === 'COMPLETED' ? ' • Completed' : ''}
+              </Typography>
+              <LinearProgress
+                variant="determinate"
+                value={progress.enrollment.progressPct}
+              />
+            </Stack>
+          )}
 
           <Typography variant="body1" sx={{ mb: 2 }}>
             {course.description || '—'}
@@ -131,7 +237,7 @@ export default function CoursePublicPage() {
               <Button
                 variant="contained"
                 startIcon={<PlayArrowIcon />}
-                onClick={() => first && startSection(first)}
+                onClick={() => (firstIncomplete || first) && startSection(firstIncomplete || first)}
               >
                 Continue
               </Button>
@@ -161,7 +267,7 @@ export default function CoursePublicPage() {
 
           <Typography variant="subtitle1" sx={{ mb: 1 }}>Curriculum</Typography>
           <Stack spacing={2}>
-            {course.chapters
+            {(course.chapters || [])
               .slice()
               .sort((a: any, b: any) => a.order - b.order)
               .map((ch: any) => (
@@ -170,23 +276,39 @@ export default function CoursePublicPage() {
                     <Typography variant="subtitle2">{ch.order}. {ch.title}</Typography>
                   </Box>
                   <Stack sx={{ p: 1 }}>
-                    {ch.sections
+                    {(ch.sections || [])
                       .slice()
                       .sort((a: any, b: any) => a.order - b.order)
-                      .map((sec: any) => (
-                        <Stack
-                          key={sec.id}
-                          direction="row"
-                          justifyContent="space-between"
-                          alignItems="center"
-                          sx={{ p: 1, borderRadius: 1, '&:hover': { bgcolor: 'grey.50' } }}
-                        >
-                          <Typography variant="body2" noWrap>
-                            {ch.order}.{sec.order} — {sec.title} · {sec.video.durationSec}s
-                          </Typography>
-                          <Button size="small" onClick={() => startSection(sec)}>Open</Button>
-                        </Stack>
-                      ))}
+                      .map((sec: any) => {
+                        const state = (progress?.sections || []).find(s => s.sectionId === sec.id);
+                        const done = !!state?.completedAt;
+                        return (
+                          <Stack
+                            key={sec.id}
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="center"
+                            sx={{ p: 1, borderRadius: 1, '&:hover': { bgcolor: 'grey.50' } }}
+                          >
+                            <Typography variant="body2" noWrap>
+                              {ch.order}.{sec.order} — {sec.title} · {sec.video.durationSec}s
+                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              {done && (
+                                <Chip
+                                  size="small"
+                                  color="success"
+                                  icon={<CheckCircleIcon />}
+                                  label="Completed"
+                                />
+                              )}
+                              <Button size="small" onClick={() => startSection(sec)}>
+                                {done ? 'Review' : 'Open'}
+                              </Button>
+                            </Stack>
+                          </Stack>
+                        );
+                      })}
                   </Stack>
                 </Box>
               ))}
@@ -210,15 +332,14 @@ export default function CoursePublicPage() {
         </Box>
       </Stack>
 
-      {/* Final Exam Modal */}
       {id && (
         <FinalQuizModal
           open={finalOpen}
           onClose={() => setFinalOpen(false)}
           courseId={id}
-          onSubmitted={(passed) => {
-            // optional toast, refresh progress, etc.
-            if (passed) setFinalOpen(false);
+          onSubmitted={async () => {
+            // Do NOT auto-close; let users review answers until they hit "Done"
+            await reloadProgress();
           }}
         />
       )}
